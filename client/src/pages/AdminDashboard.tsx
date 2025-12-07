@@ -1,13 +1,33 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Users, Database, Server, ShieldCheck } from 'lucide-react';
+import api from '../services/api';
 
 const AdminDashboard = () => {
+    const [stats, setStats] = useState({
+        total_students: 0,
+        total_teachers: 0,
+        total_banks: 0,
+        active_exams: 0
+    });
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const response = await api.get('/admin/stats');
+                setStats(response.data);
+            } catch (error) {
+                console.error('Failed to fetch admin stats:', error);
+            }
+        };
+        fetchStats();
+    }, []);
+
     return (
         <div className="space-y-8">
             <div className="flex justify-between items-end">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800">Admin Dashboard</h1>
-                    <p className="text-slate-500 mt-1">Pusat kontrol sistem CBT Sibentik.</p>
+                    <p className="text-slate-500 mt-1">Pusat kontrol sistem Sibentik Exam.</p>
                 </div>
                 <div className="flex items-center gap-2 px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-bold">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -23,41 +43,41 @@ const AdminDashboard = () => {
                             <Users className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-sm text-slate-500 font-medium">Total User</p>
-                            <h3 className="text-2xl font-bold text-slate-800">-</h3>
+                            <p className="text-sm text-slate-500 font-medium">Total Siswa</p>
+                            <h3 className="text-2xl font-bold text-slate-800">{stats.total_students}</h3>
                         </div>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
-                            <Database className="w-6 h-6" />
+                            <Users className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-sm text-slate-500 font-medium">Total Soal</p>
-                            <h3 className="text-2xl font-bold text-slate-800">-</h3>
+                            <p className="text-sm text-slate-500 font-medium">Total Guru</p>
+                            <h3 className="text-2xl font-bold text-slate-800">{stats.total_teachers}</h3>
                         </div>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-purple-50 text-purple-600 rounded-lg">
-                            <Server className="w-6 h-6" />
+                            <Database className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-sm text-slate-500 font-medium">Server Load</p>
-                            <h3 className="text-2xl font-bold text-slate-800">Optimal</h3>
+                            <p className="text-sm text-slate-500 font-medium">Bank Soal</p>
+                            <h3 className="text-2xl font-bold text-slate-800">{stats.total_banks}</h3>
                         </div>
                     </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-red-50 text-red-600 rounded-lg">
-                            <ShieldCheck className="w-6 h-6" />
+                        <div className="p-3 bg-green-50 text-green-600 rounded-lg">
+                            <Server className="w-6 h-6" />
                         </div>
                         <div>
-                            <p className="text-sm text-slate-500 font-medium">Security</p>
-                            <h3 className="text-2xl font-bold text-slate-800">Aman</h3>
+                            <p className="text-sm text-slate-500 font-medium">Ujian Aktif</p>
+                            <h3 className="text-2xl font-bold text-slate-800">{stats.active_exams}</h3>
                         </div>
                     </div>
                 </div>
@@ -95,14 +115,6 @@ const AdminDashboard = () => {
                             <div>
                                 <p className="text-slate-700"><span className="font-bold">System</span> memulai layanan.</p>
                                 <p className="text-xs text-slate-400">Baru saja</p>
-                            </div>
-                        </div>
-                        {/* Dummy logs */}
-                        <div className="flex items-start gap-3 text-sm">
-                            <div className="w-2 h-2 mt-1.5 bg-blue-300 rounded-full"></div>
-                            <div>
-                                <p className="text-slate-700"><span className="font-bold">Pak Budi</span> membuat ujian baru.</p>
-                                <p className="text-xs text-slate-400">10 menit yang lalu</p>
                             </div>
                         </div>
                     </div>

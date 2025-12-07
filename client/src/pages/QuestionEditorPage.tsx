@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, Settings, Sparkles, X, Eye, EyeOff, CheckCircle, Printer, Cloud, CloudOff, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Settings, Sparkles, X, Eye, EyeOff, CheckCircle, Printer, Cloud, CloudOff, Loader2, Globe } from 'lucide-react';
 import api from '../services/api';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
@@ -11,27 +11,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { showConfirm, showSuccess } from '../utils/alert';
 
-// Konfigurasi Modules untuk Quill
-const modules = {
-    toolbar: [
-        [{ 'header': [1, 2, false] }],
-        ['bold', 'italic', 'underline', 'strike', 'blockquote'],
-        [{ 'script': 'sub' }, { 'script': 'super' }],
-        [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
-        [{ 'direction': 'rtl' }],
-        ['link', 'image', 'formula'],
-        ['clean']
-    ],
-};
-
-const optionModules = {
-    toolbar: [
-        ['bold', 'italic', 'underline'],
-        [{ 'script': 'sub' }, { 'script': 'super' }],
-        ['image', 'formula']
-    ],
-};
-
+// Modules dipindah ke dalam komponen agar bisa akses handler
 const formats = [
     'header',
     'bold', 'italic', 'underline', 'strike', 'blockquote',
@@ -56,6 +36,85 @@ const QuestionEditorPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const quillRef = React.useRef<ReactQuill>(null);
+    // Refs untuk option editors (kita pakai array atau map jika perlu, tapi karena options statis A-E, kita handle logic uploadnya generic)
+
+    // IMAGE HANDLER FUNCTION
+    const imageHandler = useCallback(() => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+
+        input.onchange = async () => {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const formData = new FormData();
+                formData.append('image', file);
+
+                // Show loading toast or cursor
+                const loadingToast = toast.loading("Mengunggah gambar...");
+
+                try {
+                    const res = await api.post('/upload', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+
+                    const url = res.data.url; // URL dari server
+
+                    // Insert into editor
+                    const quill = quillRef.current?.getEditor();
+                    if (quill) {
+                        const range = quill.getSelection(true);
+                        quill.insertEmbed(range.index, 'image', url);
+                        // Move cursor next to image
+                        quill.setSelection(range.index + 1);
+                    }
+
+                    toast.update(loadingToast, { render: "Gambar berhasil diunggah!", type: "success", isLoading: false, autoClose: 2000 });
+
+                } catch (error) {
+                    console.error("Upload failed", error);
+                    toast.update(loadingToast, { render: "Gagal mengunggah gambar.", type: "error", isLoading: false, autoClose: 3000 });
+                }
+            }
+        };
+    }, []);
+
+    // Custom modules with Request Handler
+    const modules = React.useMemo(() => ({
+        toolbar: {
+            container: [
+                [{ 'header': [1, 2, false] }],
+                ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+                [{ 'script': 'sub' }, { 'script': 'super' }],
+                [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1' }, { 'indent': '+1' }],
+                [{ 'direction': 'rtl' }],
+                ['link', 'image', 'formula'],
+                ['clean']
+            ],
+            handlers: {
+                image: imageHandler
+            }
+        }
+    }), [imageHandler]);
+
+    // Opsi modules (bisa sama atau simplified, kita pakai handler yang sama untuk konsistensi)
+    // Note: ReactQuill untuk options dirender dalam loop, ref-nya susah diakses satu-satu secara clean untuk 'imageHandler' ini jika bergantung pada 'quillRef' utama.
+    // TAPI: Handler di atas menggunakan 'quillRef' yg merujuk ke EDITOR UTAMA (Soal).
+    // Untuk opsi jawaban, kita butuh pendekatan lain atau membiarkan opsi jawaban pakai Base64 (biasanya kecil). 
+    // NAMUN: Lebih baik kita bikin generic handler jika memungkinkan, atau sementara kita terapkan Upload hanya untuk Soal UTAMA dulu yang sering gambar gede.
+    // Untuk Opsi Jawaban: Jika ingin upload, kita harus capture Ref dari editor opsi yang sedang aktif. Agak kompleks di struktur sekarang.
+    // KITA FOKUS KE EDITOR UTAMA DULU.
+
+    // (Optional) Simple Option Modules without Image Upload for now to avoid complexity bugs, 
+    // or keep Base64 for options (usually small icons/formulas).
+    const optionModules = React.useMemo(() => ({
+        toolbar: [
+            ['bold', 'italic', 'underline'],
+            [{ 'script': 'sub' }, { 'script': 'super' }],
+            ['image', 'formula']
+        ],
+    }), []); // Default behavior (Base64) for options for now as requested 'soal pertanyaan' focus.
     const isCreatingRef = React.useRef(false);
     const [questions, setQuestions] = useState<Question[]>([]);
     const [loading, setLoading] = useState(true);
@@ -82,7 +141,8 @@ const QuestionEditorPage = () => {
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [settingsForm, setSettingsForm] = useState({
         is_random_question: false,
-        is_random_answer: false
+        is_random_answer: false,
+        is_public: false
     });
 
     // AI Generation State
@@ -99,7 +159,8 @@ const QuestionEditorPage = () => {
             setBankDetails(response.data);
             setSettingsForm({
                 is_random_question: response.data.is_random_question,
-                is_random_answer: response.data.is_random_answer
+                is_random_answer: response.data.is_random_answer,
+                is_public: response.data.is_public
             });
         } catch (error) {
             console.error('Gagal mengambil detail bank soal', error);
@@ -861,6 +922,28 @@ const QuestionEditorPage = () => {
                                     <span className="block text-sm font-bold text-slate-700 group-hover:text-blue-700 transition-colors">Acak Pilihan Jawaban</span>
                                     <span className="block text-xs text-slate-500 mt-0.5">Opsi A-E akan diacak otomatis</span>
                                 </div>
+                            </label>
+                        </div>
+
+                        {/* Public/Private Toggle */}
+                        <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+                            <div>
+                                <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+                                    <Globe className="w-4 h-4 text-blue-500" />
+                                    Publikasikan Bank Soal?
+                                </h4>
+                                <p className="text-xs text-slate-500 mt-1 max-w-[200px]">
+                                    Jika aktif, bank soal ini dapat dilihat dan diduplikat oleh guru lain.
+                                </p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="sr-only peer"
+                                    checked={settingsForm.is_public}
+                                    onChange={(e) => setSettingsForm({ ...settingsForm, is_public: e.target.checked })}
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                             </label>
                         </div>
 

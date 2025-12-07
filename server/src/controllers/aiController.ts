@@ -17,7 +17,14 @@ export const generateQuestions = async (req: Request, res: Response): Promise<vo
 
         const prompt = `
             Buatkan ${count} soal pilihan ganda tentang topik '${topic}' untuk tingkat kesulitan '${difficulty}'.
-            Format output WAJIB JSON Array murni tanpa markdown (jangan pakai \`\`\`json), dengan struktur objek sebagai berikut:
+            
+            ATURAN PENTING:
+            1. Format output WAJIB JSON Array murni tanpa markdown (jangan pakai \`\`\`json).
+            2. JANGAN gunakan tag HTML apapun (seperti <p>, <br>, <b>, dll) di dalam teks soal maupun opsi. Gunakan teks polos saja.
+            3. Jika ada rumus Matematika/LaTeX, GUNAKAN DOUBLE BACKSLASH agar JSON valid (contoh: gunakan \\\\frac bukan \\frac, \\\\times bukan \\times).
+            4. Pastikan JSON valid dan bisa diparsing langsung.
+
+            Struktur objek JSON:
             [
               {
                 "content": "Pertanyaan soal...",
@@ -32,7 +39,6 @@ export const generateQuestions = async (req: Request, res: Response): Promise<vo
                 "points": 10
               }
             ]
-            Pastikan valid JSON dan bahasa Indonesia yang baik.
         `;
 
         // Panggil model (gunakan gemini-1.5-flash yang stabil)

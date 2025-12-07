@@ -6,6 +6,8 @@ import authRoutes from './routes/authRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
 import examRoutes from './routes/examRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import classRoutes from './routes/classRoutes.js';
 import pool from './config/db.js';
 
 dotenv.config();
@@ -22,6 +24,19 @@ app.use('/api/auth', authRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/exams', examRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/classes', classRoutes);
+import uploadRoutes from './routes/uploadRoutes.js';
+app.use('/api/upload', uploadRoutes);
+
+// Static Folder untuk Gambar
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// Serve uploads folder. Note: we go up one level from 'src' (dist/src -> dist/..) or just root depending on how it's run.
+// Assuming 'uploads' is in project root.
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Init DB (Temporary Fix for Migration)
 const initDb = async () => {
@@ -37,6 +52,13 @@ const initDb = async () => {
                 exam_token VARCHAR(10) NOT NULL,
                 is_active BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            
+            CREATE TABLE IF NOT EXISTS exam_participants (
+                id SERIAL PRIMARY KEY,
+                exam_id INTEGER REFERENCES exams(id) ON DELETE CASCADE,
+                student_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE(exam_id, student_id)
             );
         `);
         console.log('✅ Tabel exams berhasil dibuat/verifikasi');

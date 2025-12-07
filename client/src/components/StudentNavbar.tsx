@@ -38,10 +38,8 @@ const StudentNavbar = () => {
                     <div className="flex justify-between h-16">
                         {/* Logo */}
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white text-lg">
-                                C
-                            </div>
-                            <span className="text-xl font-bold text-slate-800 tracking-tight">CBT Siswa</span>
+                            <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white" />
+                            <span className="text-xl font-bold text-slate-800 tracking-tight">Sibentik Exam</span>
                         </div>
 
                         {/* Desktop Menu */}
@@ -89,8 +87,8 @@ const StudentNavbar = () => {
             {/* MOBILE TOP BAR (Logo only) */}
             <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 sticky top-0 z-50 flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">C</div>
-                    <span className="font-bold text-slate-800">CBT Siswa</span>
+                    <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white" />
+                    <span className="font-bold text-slate-800">Sibentik Exam</span>
                 </div>
                 {/* Logout button removed as requested */}
             </div>

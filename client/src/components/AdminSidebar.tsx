@@ -16,7 +16,7 @@ const AdminSidebar = () => {
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/admin-dashboard' },
-        { icon: Database, label: 'Data Master', path: '/admin/master-data' },
+        { icon: Database, label: 'Manajemen Sekolah', path: '/admin/schools' },
         { icon: Users, label: 'Manajemen User', path: '/admin/users' },
         { icon: MonitorPlay, label: 'Monitoring Global', path: '/admin/monitoring' },
         { icon: Settings, label: 'Pengaturan', path: '/admin/settings' },

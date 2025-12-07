@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Users, BookOpen, Clock, Calendar, TrendingUp, ArrowRight, Monitor, Edit3, Loader2, CheckCircle } from 'lucide-react';
+import { Users, BookOpen, Clock, Calendar, TrendingUp, ArrowRight, Monitor, Edit3, Loader2, CheckCircle, Award, AlertTriangle, BarChart2 } from 'lucide-react';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 interface DashboardData {
+    latestExamAnalysis: {
+        exam: {
+            id: number;
+            title: string;
+            subject: string;
+            class_level: string;
+            end_time: string;
+            avg_score: number;
+            max_score: number;
+            min_score: number;
+            remedial_count: number;
+            total_participants: number;
+        } | null;
+        topStudents: { full_name: string; score: number }[];
+    };
     activeExams: any[];
     upcomingExams: any[];
     gradingQueue: any[];
@@ -41,6 +56,10 @@ const TeacherDashboard = () => {
         );
     }
 
+    const { latestExamAnalysis } = data || {};
+    const exam = latestExamAnalysis?.exam;
+    const topStudents = latestExamAnalysis?.topStudents || [];
+
     return (
         <div className="space-y-8 font-sans text-slate-900 pb-10">
             {/* Header */}
@@ -65,78 +84,99 @@ const TeacherDashboard = () => {
                 {/* LEFT COLUMN (2/3) */}
                 <div className="lg:col-span-2 space-y-8">
 
-                    {/* 1. LIVE MONITORING (Highlight) */}
+                    {/* 1. LATEST EXAM ANALYSIS (Success/Review Focus) */}
                     <section>
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                            <h2 className="font-bold text-slate-800 text-lg">Sedang Berlangsung</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <h2 className="font-bold text-slate-800 text-lg">Analisis Ujian Terakhir</h2>
+                            </div>
                         </div>
 
-                        {data?.activeExams && data.activeExams.length > 0 ? (
-                            <div className="grid gap-4">
-                                {data.activeExams.map((exam: any) => {
-                                    // Fix: Parse ke Number dan handle pembagian dengan nol
-                                    const submitted = Number(exam.submitted_count) || 0;
-                                    const total = Number(exam.total_students) || 0;
-                                    const progress = total > 0 ? Math.round((submitted / total) * 100) : 0;
+                        {exam ? (
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 overflow-hidden relative">
+                                <div className="absolute top-0 right-0 p-4 opacity-10">
+                                    <BarChart2 className="w-32 h-32 text-blue-600" />
+                                </div>
 
-                                    return (
-                                        <div key={exam.id} className="bg-white p-6 rounded-xl shadow-sm border border-blue-100 hover:border-blue-300 transition-all relative overflow-hidden group">
-                                            <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <h3 className="font-bold text-lg text-slate-800">{exam.title}</h3>
-                                                    <p className="text-slate-500 text-sm">{exam.subject} • Kelas {exam.class_level}</p>
-                                                </div>
-                                                <button
-                                                    onClick={() => navigate(`/exam-monitor/${exam.id}`)}
-                                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-blue-200 shadow-lg"
-                                                >
-                                                    <Monitor className="w-4 h-4" />
-                                                    Pantau Live
-                                                </button>
-                                            </div>
+                                <div className="relative z-10">
+                                    <div className="mb-6">
+                                        <h3 className="text-xl font-bold text-slate-800">{exam.title}</h3>
+                                        <p className="text-slate-500">{exam.subject} • Kelas {exam.class_level} • Selesai {new Date(exam.end_time).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
+                                    </div>
 
-                                            {/* Progress Bar */}
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between text-sm font-medium">
-                                                    <span className="text-slate-600">Progress Submit</span>
-                                                    <span className="text-blue-600">{submitted} / {total} Siswa ({progress}%)</span>
-                                                </div>
-                                                <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                                                    <div
-                                                        className="bg-blue-500 h-2.5 rounded-full transition-all duration-1000 ease-out"
-                                                        style={{ width: `${progress}%` }}
-                                                    ></div>
-                                                </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                            <div className="text-blue-600 font-bold mb-1 flex items-center gap-2">
+                                                <BarChart2 className="w-4 h-4" /> Rata-Rata Nilai
                                             </div>
-
-                                            <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
-                                                <Clock className="w-3 h-3" />
-                                                Selesai pukul {new Date(exam.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                                            </div>
+                                            <div className="text-2xl font-bold text-slate-800">{Number(exam.avg_score).toFixed(1)}</div>
+                                            <div className="text-xs text-slate-500 mt-1">Dari {exam.total_participants} Siswa</div>
                                         </div>
-                                    );
-                                })}
+                                        <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                                            <div className="text-green-600 font-bold mb-1 flex items-center gap-2">
+                                                <Award className="w-4 h-4" /> Nilai Tertinggi
+                                            </div>
+                                            <div className="text-2xl font-bold text-slate-800">{Number(exam.max_score).toFixed(1)}</div>
+                                            <div className="text-xs text-slate-500 mt-1">Sangat Memuaskan</div>
+                                        </div>
+                                        <div className="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                                            <div className="text-orange-600 font-bold mb-1 flex items-center gap-2">
+                                                <AlertTriangle className="w-4 h-4" /> Perlu Remedial
+                                            </div>
+                                            <div className="text-2xl font-bold text-slate-800">{exam.remedial_count}</div>
+                                            <div className="text-xs text-slate-500 mt-1">Siswa di bawah KKM</div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-bold text-slate-700 mb-3 flex items-center gap-2">
+                                            <Award className="w-4 h-4 text-yellow-500" /> Top 3 Siswa Terbaik
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {topStudents.map((student, idx) => (
+                                                <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${idx === 0 ? 'bg-yellow-400' : idx === 1 ? 'bg-slate-400' : 'bg-orange-400'}`}>
+                                                            {idx + 1}
+                                                        </div>
+                                                        <span className="font-medium text-slate-700">{student.full_name}</span>
+                                                    </div>
+                                                    <span className="font-bold text-blue-600">{Number(student.score).toFixed(1)}</span>
+                                                </div>
+                                            ))}
+                                            {topStudents.length === 0 && <p className="text-slate-400 text-sm italic">Belum ada data nilai.</p>}
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6 flex justify-end">
+                                        <button
+                                            onClick={() => navigate(`/exam-monitor/${exam.id}`)}
+                                            className="text-blue-600 font-bold text-sm hover:underline flex items-center gap-1"
+                                        >
+                                            Lihat Analisis Detail <ArrowRight className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         ) : (
                             <div className="bg-slate-50 border border-dashed border-slate-300 rounded-xl p-8 text-center">
                                 <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-3 text-slate-400">
-                                    <Clock className="w-6 h-6" />
+                                    <BarChart2 className="w-6 h-6" />
                                 </div>
-                                <p className="text-slate-500 font-medium">Tidak ada ujian yang sedang berlangsung saat ini.</p>
+                                <p className="text-slate-500 font-medium">Belum ada ujian yang selesai untuk dianalisis.</p>
                                 <button onClick={() => navigate('/exam-schedule')} className="text-blue-600 text-sm font-bold mt-2 hover:underline">
-                                    Lihat Jadwal Lengkap
+                                    Buat Jadwal Ujian
                                 </button>
                             </div>
                         )}
                     </section>
 
-                    {/* 2. RECENT PERFORMANCE */}
+                    {/* 2. RECENT PERFORMANCE (History Table) */}
                     <section>
                         <h2 className="font-bold text-slate-800 text-lg mb-4 flex items-center gap-2">
                             <TrendingUp className="w-5 h-5 text-slate-500" />
-                            Hasil Ujian Terakhir
+                            Riwayat Ujian
                         </h2>
                         <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
                             <table className="w-full text-left">
@@ -183,50 +223,54 @@ const TeacherDashboard = () => {
                 {/* RIGHT COLUMN (1/3) */}
                 <div className="space-y-8">
 
-                    {/* 3. UPCOMING SCHEDULE */}
+                    {/* 3. ACTIVE EXAMS (Live Now) */}
                     <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                         <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                            <Calendar className="w-5 h-5 text-indigo-500" />
-                            Jadwal Terdekat
+                            <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                            </span>
+                            Ujian Berlangsung
                         </h2>
 
                         <div className="space-y-4">
-                            {data?.upcomingExams && data.upcomingExams.length > 0 ? (
-                                data.upcomingExams.map((exam: any) => (
+                            {data?.activeExams && data.activeExams.length > 0 ? (
+                                data.activeExams.map((exam: any) => (
                                     <div key={exam.id} className="flex gap-3 items-start pb-4 border-b border-slate-50 last:border-0 last:pb-0">
-                                        <div className="flex-shrink-0 w-12 text-center bg-indigo-50 rounded-lg py-1">
-                                            <span className="block text-xs font-bold text-indigo-600 uppercase">
-                                                {new Date(exam.start_time).toLocaleDateString('id-ID', { month: 'short' })}
-                                            </span>
-                                            <span className="block text-lg font-bold text-indigo-700 leading-none">
-                                                {new Date(exam.start_time).getDate()}
-                                            </span>
+                                        <div className="flex-shrink-0 w-12 text-center bg-green-50 rounded-lg py-2">
+                                            <Monitor className="w-6 h-6 text-green-600 mx-auto" />
                                         </div>
-                                        <div>
+                                        <div className="flex-1 min-w-0">
                                             <h4 className="font-bold text-slate-800 text-sm line-clamp-1">{exam.title}</h4>
                                             <p className="text-xs text-slate-500 mt-0.5 mb-1">
-                                                {new Date(exam.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })} • {exam.class_level}
+                                                Kelas {exam.class_level} • {exam.submitted_count} Selesai
                                             </p>
-                                            <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 rounded text-[10px] font-mono text-slate-600">
-                                                Token: <span className="font-bold select-all">{exam.exam_token}</span>
+                                            <div className="flex justify-between items-center">
+                                                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 rounded text-[10px] font-mono text-slate-600">
+                                                    Token: <span className="font-bold select-all text-blue-600">{exam.exam_token}</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => navigate(`/exam-monitor/${exam.id}`)}
+                                                    className="text-[10px] font-bold text-blue-600 hover:underline"
+                                                >
+                                                    Pantau
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-sm text-slate-500 italic">Tidak ada jadwal ujian dalam 48 jam ke depan.</p>
+                                <div className="text-center py-4">
+                                    <p className="text-sm text-slate-500 italic">Tidak ada ujian yang sedang aktif saat ini.</p>
+                                    <button onClick={() => navigate('/exam-schedule')} className="text-xs text-blue-600 font-bold mt-2 hover:underline">
+                                        + Jadwalkan Ujian
+                                    </button>
+                                </div>
                             )}
                         </div>
-
-                        <button
-                            onClick={() => navigate('/exam-schedule')}
-                            className="w-full mt-4 py-2 text-sm text-indigo-600 font-bold hover:bg-indigo-50 rounded-lg transition-colors flex items-center justify-center gap-1"
-                        >
-                            Lihat Semua Jadwal <ArrowRight className="w-4 h-4" />
-                        </button>
                     </section>
 
-                    {/* 4. GRADING QUEUE (TO DO) */}
+                    {/* 4. GRADING QUEUE */}
                     <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                         <h2 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
                             <Edit3 className="w-5 h-5 text-orange-500" />
@@ -242,7 +286,7 @@ const TeacherDashboard = () => {
                                             <p className="text-xs text-orange-700 mt-0.5">{item.submission_count} Jawaban Masuk</p>
                                         </div>
                                         <button
-                                            onClick={() => navigate(`/exam-schedule`)} // Idealnya ke halaman list siswa per ujian untuk grading
+                                            onClick={() => navigate(`/exam-monitor/${item.id}`)}
                                             className="p-2 bg-white text-orange-600 rounded-md shadow-sm hover:bg-orange-100 transition-colors"
                                         >
                                             <ArrowRight className="w-4 h-4" />

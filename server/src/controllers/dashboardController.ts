@@ -4,42 +4,67 @@ import pool from '../config/db.js';
 export const getTeacherDashboardStats = async (req: Request, res: Response): Promise<void> => {
     try {
         const teacherId = (req as any).user?.id;
+        const schoolId = (req as any).user?.school_id;
 
-        if (!teacherId) {
-            res.status(401).json({ message: 'Unauthorized' });
+        if (!teacherId || !schoolId) {
+            res.status(401).json({ message: 'Unauthorized or No School Assigned' });
             return;
         }
 
-        // 1. ACTIVE EXAMS (Live Monitoring) - Filter by created_by
+        // 1. ACTIVE EXAMS (Live Monitoring) - Filter by created_by AND school_id for total students
+        // 1. LATEST EXAM ANALYSIS (Top 3 Students & Stats)
+        const latestExamQuery = await pool.query(`
+            SELECT 
+                e.id, e.title, qb.subject, qb.class_level, e.end_time,
+                AVG(es.score) as avg_score,
+                MAX(es.score) as max_score,
+                MIN(es.score) as min_score,
+                (SELECT COUNT(*) FROM exam_sessions es2 WHERE es2.exam_id = e.id AND es2.score < 70) as remedial_count,
+                (SELECT COUNT(*) FROM exam_sessions es3 WHERE es3.exam_id = e.id AND es3.status = 'completed') as total_participants
+            FROM exams e
+            JOIN question_banks qb ON e.bank_id = qb.id
+            LEFT JOIN exam_sessions es ON es.exam_id = e.id
+            WHERE e.created_by = $1 
+            AND (e.end_time < (NOW() + INTERVAL '7 hours') OR EXISTS (SELECT 1 FROM exam_sessions es2 WHERE es2.exam_id = e.id AND es2.status = 'completed'))
+            GROUP BY e.id, qb.subject, qb.class_level, e.end_time
+            ORDER BY e.end_time DESC
+            LIMIT 1
+        `, [teacherId]);
+
+        let topStudents: any[] = [];
+        let latestExam = null; // No type defined yet, any is implicitly used or inferred
+
+        if (latestExamQuery.rows.length > 0) {
+            latestExam = latestExamQuery.rows[0];
+
+            const topStudentsQuery = await pool.query(`
+                SELECT u.full_name, es.score 
+                FROM exam_sessions es
+                JOIN users u ON es.student_id = u.id
+                WHERE es.exam_id = $1 AND es.status = 'completed'
+                ORDER BY es.score DESC
+                LIMIT 3
+            `, [latestExam.id]);
+
+            topStudents = topStudentsQuery.rows;
+        }
+
+        // 2. ACTIVE EXAMS (Live - For Sidebar)
         const activeExamsQuery = await pool.query(`
             SELECT 
-                e.id, 
-                e.title, 
-                e.end_time,
-                qb.class_level,
-                qb.subject,
-                (SELECT COUNT(*) FROM exam_sessions es WHERE es.exam_id = e.id AND es.status = 'completed') as submitted_count,
-                (
-                    SELECT COUNT(*) 
-                    FROM users u 
-                    WHERE u.role = 'student' 
-                    AND (
-                        -- Cocokkan persis (case insensitive & trim)
-                        TRIM(LOWER(u.class_level)) = TRIM(LOWER(qb.class_level))
-                        -- ATAU cocokkan variasi umum (X=10, XI=11, XII=12)
-                        OR (TRIM(LOWER(qb.class_level)) IN ('x', '10') AND TRIM(LOWER(u.class_level)) IN ('x', '10'))
-                        OR (TRIM(LOWER(qb.class_level)) IN ('xi', '11') AND TRIM(LOWER(u.class_level)) IN ('xi', '11'))
-                        OR (TRIM(LOWER(qb.class_level)) IN ('xii', '12') AND TRIM(LOWER(u.class_level)) IN ('xii', '12'))
-                    )
-                ) as total_students
+                e.id, e.title, e.end_time, qb.class_level, e.exam_token,
+                (SELECT COUNT(*) FROM exam_sessions es WHERE es.exam_id = e.id AND es.status = 'completed') as submitted_count
             FROM exams e
             JOIN question_banks qb ON e.bank_id = qb.id
             WHERE e.created_by = $1 
-            AND e.start_time <= NOW() AND e.end_time >= NOW()
+            AND e.start_time <= (NOW() + INTERVAL '7 hours') 
+            AND e.end_time >= (NOW() + INTERVAL '7 hours')
             ORDER BY e.end_time ASC
+            LIMIT 5
         `, [teacherId]);
 
-        // 2. UPCOMING EXAMS (Next 48 Hours) - Filter by created_by
+        // 3. UPCOMING EXAMS (Next 48 Hours) - No longer primary focus but kept or replaced?
+        // Let's keep it but maybe we prioritize Active.
         const upcomingExamsQuery = await pool.query(`
             SELECT 
                 e.id, 
@@ -51,7 +76,8 @@ export const getTeacherDashboardStats = async (req: Request, res: Response): Pro
             FROM exams e
             JOIN question_banks qb ON e.bank_id = qb.id
             WHERE e.created_by = $1
-            AND e.start_time > NOW() AND e.start_time <= NOW() + INTERVAL '48 hours'
+            AND e.start_time > (NOW() + INTERVAL '7 hours') 
+            AND e.start_time <= (NOW() + INTERVAL '7 hours' + INTERVAL '48 hours')
             ORDER BY e.start_time ASC
             LIMIT 5
         `, [teacherId]);
@@ -68,8 +94,8 @@ export const getTeacherDashboardStats = async (req: Request, res: Response): Pro
             JOIN question_banks qb ON e.bank_id = qb.id
             JOIN questions q ON q.bank_id = qb.id
             WHERE e.created_by = $1
-            AND e.end_time < NOW() 
-            AND e.end_time > NOW() - INTERVAL '7 days'
+            AND (SELECT COUNT(*) FROM exam_sessions es WHERE es.exam_id = e.id AND es.status = 'completed') > 0
+            AND e.end_time > (NOW() + INTERVAL '7 hours' - INTERVAL '30 days')
             AND q.type = 'essay'
             LIMIT 5
         `, [teacherId]);
@@ -87,20 +113,24 @@ export const getTeacherDashboardStats = async (req: Request, res: Response): Pro
             JOIN question_banks qb ON e.bank_id = qb.id
             JOIN exam_sessions es ON es.exam_id = e.id
             WHERE e.created_by = $1
-            AND e.end_time < NOW() AND es.status = 'completed'
+            AND es.status = 'completed'
             GROUP BY e.id, e.title, qb.class_level, e.end_time
             ORDER BY e.end_time DESC
             LIMIT 4
         `, [teacherId]);
 
-        // 5. QUICK STATS - Filter banks by created_by (Students remain global)
+        // 5. QUICK STATS - Filter students by school_id
         const statsQuery = await pool.query(`
             SELECT
-                (SELECT COUNT(*) FROM users WHERE role = 'student') as total_students,
+                (SELECT COUNT(*) FROM users WHERE role = 'student' AND school_id = $2) as total_students,
                 (SELECT COUNT(*) FROM question_banks WHERE created_by = $1) as total_banks
-        `, [teacherId]);
+        `, [teacherId, schoolId]);
 
         res.json({
+            latestExamAnalysis: {
+                exam: latestExam,
+                topStudents
+            },
             activeExams: activeExamsQuery.rows,
             upcomingExams: upcomingExamsQuery.rows,
             gradingQueue: gradingQueueQuery.rows,

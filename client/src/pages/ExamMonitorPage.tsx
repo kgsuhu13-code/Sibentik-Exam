@@ -21,6 +21,10 @@ interface StudentMonitor {
     is_locked: boolean;
     violation_count: number;
     violation_log: { time: string; reason: string }[];
+    essay_stats: {
+        answered: number;
+        total: number;
+    };
 }
 
 interface MonitorData {
@@ -250,6 +254,7 @@ const ExamMonitorPage = () => {
                                     <th className="px-6 py-4 text-center">Nilai</th>
                                     <th className="px-6 py-4 text-center">Benar</th>
                                     <th className="px-6 py-4 text-center">Salah</th>
+                                    <th className="px-6 py-4 text-center">Esai</th>
                                     <th className="px-6 py-4 text-center">Aksi</th>
                                 </tr>
                             </thead>
@@ -324,6 +329,15 @@ const ExamMonitorPage = () => {
                                         </td>
                                         <td className="px-6 py-4 text-center text-red-500 font-medium">
                                             {student.status === 'completed' ? student.wrong_count : '-'}
+                                        </td>
+                                        <td className="px-6 py-4 text-center text-sm font-medium">
+                                            {student.essay_stats && student.essay_stats.total > 0 ? (
+                                                <span className={`px-2 py-0.5 rounded ${student.essay_stats.answered === student.essay_stats.total ? 'bg-indigo-50 text-indigo-700' : 'bg-orange-50 text-orange-600'}`}>
+                                                    {student.essay_stats.answered} / {student.essay_stats.total}
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-300">-</span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             {student.is_locked ? (

@@ -6,6 +6,7 @@ import TeacherLayout from './components/TeacherLayout';
 import TeacherDashboard from './pages/TeacherDashboard';
 import QuestionBankPage from './pages/QuestionBankPage';
 import QuestionEditorPage from './pages/QuestionEditorPage';
+import PublicBankPreviewPage from './pages/PublicBankPreviewPage';
 import ExamSchedulePage from './pages/ExamSchedulePage';
 import ExamMonitorPage from './pages/ExamMonitorPage';
 import ExamReviewPage from './pages/ExamReviewPage';
@@ -18,6 +19,9 @@ import StudentHistoryPage from './pages/StudentHistoryPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/AdminLayout';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminSchoolsPage from './pages/AdminSchoolsPage';
+import AdminSchoolDetailPage from './pages/AdminSchoolDetailPage';
+import TeacherGradesPage from './pages/TeacherGradesPage';
 
 // Komponen Dummy untuk Placeholder Menu Lain
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -43,12 +47,13 @@ function App() {
                                 <Route path="/exam-schedule" element={<ExamSchedulePage />} />
                                 <Route path="/monitoring" element={<MonitoringDashboardPage />} />
                                 <Route path="/students" element={<PlaceholderPage title="Data Siswa" />} />
-                                <Route path="/grades" element={<PlaceholderPage title="Hasil & Nilai" />} />
+                                <Route path="/grades" element={<TeacherGradesPage />} />
                                 <Route path="/settings" element={<PlaceholderPage title="Pengaturan" />} />
                             </Route>
 
                             {/* Rute Editor Soal (Full Screen) */}
                             <Route path="/question-bank/:id" element={<QuestionEditorPage />} />
+                            <Route path="/question-bank/:id/preview" element={<PublicBankPreviewPage />} />
                             <Route path="/exam-monitor/:id" element={<ExamMonitorPage />} />
                             <Route path="/exam/:examId/review/:studentId" element={<ExamReviewPage />} />
                         </Route>
@@ -68,6 +73,8 @@ function App() {
                         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                             <Route element={<AdminLayout />}>
                                 <Route path="/admin-dashboard" element={<AdminDashboard />} />
+                                <Route path="/admin/schools" element={<AdminSchoolsPage />} />
+                                <Route path="/admin/schools/:id" element={<AdminSchoolDetailPage />} />
                                 <Route path="/admin/master-data" element={<PlaceholderPage title="Data Master" />} />
                                 <Route path="/admin/users" element={<PlaceholderPage title="Manajemen User" />} />
                                 <Route path="/admin/monitoring" element={<PlaceholderPage title="Monitoring Global" />} />

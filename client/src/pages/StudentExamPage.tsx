@@ -477,9 +477,7 @@ const StudentExamPage = () => {
                     >
                         <Menu className="w-6 h-6" />
                     </button>
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
-                        CBT
-                    </div>
+                    <img src="/logo.jpg" alt="Sibentik Exam" className="w-8 h-8 rounded-lg object-contain bg-white shadow-sm" />
                     <div className="hidden sm:block">
                         <h1 className="font-bold text-slate-800 text-sm md:text-lg leading-tight line-clamp-1">{exam?.title}</h1>
                     </div>

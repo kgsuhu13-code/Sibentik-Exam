@@ -481,6 +481,21 @@ export const verifyExamToken = async (req: Request, res: Response): Promise<void
             return;
         }
 
+        // [BARU] 4. Validasi Sekolah (Cross-School Protection)
+        // Ambil school_id pembuat ujian dan siswa
+        const validationResult = await pool.query(`
+            SELECT 
+                (SELECT u.school_id FROM exams e JOIN users u ON e.created_by = u.id WHERE e.id = $1) as exam_school_id,
+                (SELECT school_id FROM users WHERE id = $2) as student_school_id
+        `, [examId, studentId]);
+
+        const { exam_school_id, student_school_id } = validationResult.rows[0];
+
+        if (exam_school_id && student_school_id && exam_school_id !== student_school_id) {
+            res.status(403).json({ message: 'Anda tidak terdaftar di sekolah penyelenggara ujian ini.' });
+            return;
+        }
+
         // LOGIKA BARU: Jika reset diminta, hapus sesi lama dulu
         if (reset) {
             await pool.query(

@@ -55,7 +55,7 @@ export const getExamMonitorData = async (req: Request, res: Response): Promise<v
 
         // 4. Get Questions & Correct Answers (for scoring)
         const questionsResult = await pool.query(`
-            SELECT id, correct_answer, points FROM questions WHERE bank_id = $1
+            SELECT id, correct_answer, points, type FROM questions WHERE bank_id = $1
         `, [exam.bank_id]);
         const questions = questionsResult.rows;
 
@@ -67,7 +67,9 @@ export const getExamMonitorData = async (req: Request, res: Response): Promise<v
                 score: 0,
                 correct_count: 0,
                 wrong_count: 0,
-                unanswered_count: 0
+                unanswered_count: 0,
+                essay_answered: 0,
+                essay_total: 0
             };
 
             if (session) {
@@ -75,11 +77,23 @@ export const getExamMonitorData = async (req: Request, res: Response): Promise<v
                     const studentAnswers = session.answers;
                     questions.forEach(q => {
                         const studentAns = studentAnswers[q.id];
+
+                        // Count Totals
+                        if (q.type === 'essay') {
+                            stats.essay_total++;
+                        }
+
                         if (studentAns) {
-                            if (studentAns === q.correct_answer) {
-                                stats.correct_count++;
+                            // PG Logic: Check correctness
+                            if (q.type !== 'essay') {
+                                if (studentAns === q.correct_answer) {
+                                    stats.correct_count++;
+                                } else {
+                                    stats.wrong_count++;
+                                }
                             } else {
-                                stats.wrong_count++;
+                                // Essay Logic: Just count as answered
+                                stats.essay_answered++;
                             }
                         } else {
                             stats.unanswered_count++;
@@ -116,7 +130,11 @@ export const getExamMonitorData = async (req: Request, res: Response): Promise<v
                 unanswered_count: stats.unanswered_count,
                 is_locked: session ? session.is_locked : false,
                 violation_count: session ? session.violation_count : 0,
-                violation_log: session ? session.violation_log : [] // Added violation_log
+                violation_log: session ? session.violation_log : [],
+                essay_stats: {
+                    answered: stats.essay_answered,
+                    total: stats.essay_total
+                }
             };
         });
 

@@ -9,8 +9,9 @@ export default defineConfig({
         // Mengizinkan akses dari domain Cloudflare Tunnel
         // Jika nanti link tunnel berubah, Anda perlu update domain ini lagi
         allowedHosts: [
-            'https://rays-additionally-ron-designers.trycloudflare.com',
-            'https://initiative-universities-roll-annual.trycloudflare.com' // Jaga-jaga backend domain juga
+            'jeff-eight-denver-identify.trycloudflare.com',
+            'projectors-llp-daughters-lists.trycloudflare.com',
+            '.trycloudflare.com' // Wildcard attempt sometimes works depending on version, otherwise specific hosts needed
         ]
     }
 })

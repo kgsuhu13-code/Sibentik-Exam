@@ -21,6 +21,8 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         const hashedPassword = await bcrypt.hash(password, salt);
 
         // 3. Simpan ke Database
+        // Note: For now, new users might not have a school_id unless assigned later or passed in registration.
+        // We'll assume they get assigned to a default school or NULL for now.
         const newUser = await pool.query(
             `INSERT INTO users (username, password_hash, full_name, role, class_level) 
        VALUES ($1, $2, $3, $4, $5) RETURNING id, username, role, class_level`,
@@ -57,7 +59,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
         // 3. Buat Token JWT
         const token = jwt.sign(
-            { id: user.id, role: user.role, username: user.username },
+            {
+                id: user.id,
+                role: user.role,
+                username: user.username,
+                school_id: user.school_id
+            },
             process.env.JWT_SECRET as string,
             { expiresIn: '1d' }
         );
@@ -70,7 +77,8 @@ export const login = async (req: Request, res: Response): Promise<void> => {
                 username: user.username,
                 role: user.role,
                 full_name: user.full_name,
-                class_level: user.class_level // Return class_level on login too
+                class_level: user.class_level,
+                school_id: user.school_id
             }
         });
     } catch (error) {
@@ -89,7 +97,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
         }
 
         const result = await pool.query(
-            'SELECT id, username, full_name, role, class_level FROM users WHERE id = $1',
+            'SELECT id, username, full_name, role, class_level, school_id FROM users WHERE id = $1',
             [userId]
         );
 

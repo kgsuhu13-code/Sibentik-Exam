@@ -5,6 +5,7 @@ interface UserPayload {
     id: number;
     username: string;
     role: string;
+    school_id?: number;
 }
 
 // Extend Express Request type to include user
