@@ -145,6 +145,10 @@ const QuestionEditorPage = () => {
         is_public: false
     });
 
+    // Mass Update State
+    const [targetTotalScore, setTargetTotalScore] = useState(100);
+    const [isDistributingPoints, setIsDistributingPoints] = useState(false);
+
     // AI Generation State
     const [showAiModal, setShowAiModal] = useState(false);
     const [aiTopic, setAiTopic] = useState('');
@@ -180,6 +184,68 @@ const QuestionEditorPage = () => {
             toast.error('Gagal menyimpan pengaturan');
         } finally {
             setIsSavingSettings(false);
+        }
+    };
+
+    const distributePoints = async () => {
+        setIsDistributingPoints(true);
+        try {
+            // Hitung bobot per soal
+            const totalQuestions = questions.length;
+            if (totalQuestions === 0) {
+                toast.warn('Belum ada soal untuk diatur bobotnya.');
+                return;
+            }
+
+            const pointsPerQuestion = Number((targetTotalScore / totalQuestions).toFixed(2));
+
+            // Konfirmasi ke user
+            const confirm = await showConfirm(
+                'Atur Ulang Bobot?',
+                `Akan mengubah bobot ${totalQuestions} soal menjadi ${pointsPerQuestion} poin agar totalnya ${targetTotalScore}.`,
+                'Ya, Atur!',
+                'Batal',
+                'question',
+                'primary'
+            );
+
+            if (!confirm.isConfirmed) return;
+
+            // Panggil API untuk update massal (kita perlu endpoint baru atau loop di frontend)
+            // Untuk amannya dan lebih cepat, kita loop di frontend lalu panggil API update per soal
+            // TAPI: Idealnya ada endpoint batch update. 
+            // SEMENTARA: Kita update satu-satu dengan Promise.all agar UI tetap responsif.
+            // ATAU: Kita buat endpoint khusus di backend (rekomendasi terbaik).
+
+            // Mari kita coba cek apakah endpoint soal support update parsial. 
+            // Kita gunakan Promise.all untuk update parallel.
+
+            const updatePromises = questions.map(q =>
+                api.put(`/questions/questions/${q.id}`, {
+                    ...q, // kirim data lain tetap sama
+                    points: pointsPerQuestion,
+                    type: q.type, // Required fields
+                    content: q.content,
+                    bank_id: id
+                })
+            );
+
+            await Promise.all(updatePromises);
+
+            // Update state lokal
+            setQuestions(prev => prev.map(q => ({ ...q, points: pointsPerQuestion })));
+            if (selectedQuestionId) {
+                setPoints(pointsPerQuestion);
+            }
+
+            toast.success(`Berhasil mengatur ulang bobot menjadi ${pointsPerQuestion} per soal.`);
+            setShowSettingsModal(false);
+
+        } catch (error) {
+            console.error('Gagal update bobot massal', error);
+            toast.error('Gagal memperbarui bobot soal.');
+        } finally {
+            setIsDistributingPoints(false);
         }
     };
 
@@ -923,6 +989,35 @@ const QuestionEditorPage = () => {
                                     <span className="block text-xs text-slate-500 mt-0.5">Opsi A-E akan diacak otomatis</span>
                                 </div>
                             </label>
+                        </div>
+
+                        {/* Mass Points Distribution */}
+                        <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                            <h4 className="font-bold text-sm text-blue-800 mb-2 flex items-center gap-2">
+                                <Settings className="w-4 h-4" />
+                                Otomatisasi Bobot Nilai
+                            </h4>
+                            <div className="flex items-end gap-3">
+                                <div className="flex-1">
+                                    <label className="text-[10px] uppercase font-bold text-blue-600 tracking-wider">Target Total Nilai</label>
+                                    <input
+                                        type="number"
+                                        value={targetTotalScore}
+                                        onChange={(e) => setTargetTotalScore(Number(e.target.value))}
+                                        className="w-full mt-1 px-3 py-1.5 bg-white border border-blue-200 rounded-lg text-sm font-bold text-blue-900 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                                    />
+                                </div>
+                                <button
+                                    onClick={distributePoints}
+                                    disabled={isDistributingPoints || questions.length === 0}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all h-[34px]"
+                                >
+                                    {isDistributingPoints ? 'Memproses...' : 'Ratakan Bobot'}
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-blue-600 mt-2 leading-tight">
+                                Sistem akan membagi rata target nilai ke {questions.length} soal yang ada.
+                            </p>
                         </div>
 
                         {/* Public/Private Toggle */}
