@@ -21,10 +21,9 @@ export const getExams = async (req: Request, res: Response): Promise<void> => {
         const params: any[] = [];
 
         if (studentId) {
-            // Student View: Only show exams from their own school
-            // Using subquery to get student's school_id ensures security
+            // Student View: Include is_published
             query = `
-                SELECT e.*, qb.title as bank_title, qb.subject, qb.class_level,
+                SELECT e.*, qb.title as bank_title, qb.subject, qb.class_level, e.is_published,
                        es.status as student_status, es.start_time as student_start_time
                 FROM exams e
                 JOIN question_banks qb ON e.bank_id = qb.id
@@ -42,7 +41,7 @@ export const getExams = async (req: Request, res: Response): Promise<void> => {
         } else {
             // Teacher/Admin View
             query = `
-                SELECT e.*, qb.title as bank_title, qb.subject, qb.class_level, u.full_name as creator_name
+                SELECT e.*, qb.title as bank_title, qb.subject, qb.class_level, u.full_name as creator_name, e.is_published
                 FROM exams e
                 JOIN question_banks qb ON e.bank_id = qb.id
                 JOIN users u ON e.created_by = u.id
@@ -179,5 +178,27 @@ export const getExamGradesSummary = async (req: Request, res: Response): Promise
     } catch (error) {
         console.error('Error fetching exam grades summary:', error);
         res.status(500).json({ message: 'Gagal mengambil data nilai' });
+    }
+};
+
+export const publishExam = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const { is_published } = req.body; // Expecting boolean
+
+    try {
+        const result = await pool.query(
+            'UPDATE exams SET is_published = $1 WHERE id = $2 RETURNING *',
+            [is_published, id]
+        );
+
+        if (result.rows.length === 0) {
+            res.status(404).json({ message: 'Ujian tidak ditemukan' });
+            return;
+        }
+
+        res.json({ message: `Nilai ujian berhasil ${is_published ? 'dipublikasikan' : 'disembunyikan'}` });
+    } catch (error) {
+        console.error('Error publishing exam:', error);
+        res.status(500).json({ message: 'Gagal mengubah status publikasi nilai' });
     }
 };

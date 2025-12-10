@@ -174,6 +174,45 @@ export const deleteQuestion = async (req: Request, res: Response): Promise<void>
     }
 };
 
+// 6.5. Hapus Banyak Soal Sekaligus (Bulk Delete)
+export const deleteQuestionsBulk = async (req: Request, res: Response): Promise<void> => {
+    const { ids } = req.body; // Array of IDs: [1, 2, 3]
+    const userId = getUserId(req);
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+        res.status(400).json({ message: 'Data ID tidak valid' });
+        return;
+    }
+
+    try {
+        // 1. Verifikasi Kepemilikan (Semua soal harus milik user yang sama)
+        // Kita bisa cek apakah ada soal dalam list yg BUKAN milik user ini.
+        const check = await pool.query(`
+            SELECT q.id, qb.created_by 
+            FROM questions q
+            JOIN question_banks qb ON q.bank_id = qb.id
+            WHERE q.id = ANY($1)
+        `, [ids]);
+
+        // Cek jika ada soal yang unauthorized
+        const unauthorized = check.rows.some(row => row.created_by && row.created_by !== userId);
+
+        if (unauthorized) {
+            res.status(403).json({ message: 'Anda tidak memiliki izin menghapus salah satu atau lebih soal yang dipilih.' });
+            return;
+        }
+
+        // 2. Eksekusi Hapus
+        await pool.query('DELETE FROM questions WHERE id = ANY($1)', [ids]);
+
+        res.json({ message: `Berhasil menghapus ${ids.length} soal` });
+
+    } catch (error) {
+        console.error('Bulk delete error:', error);
+        res.status(500).json({ message: 'Gagal menghapus soal secara massal' });
+    }
+};
+
 // 7. Ambil Detail Bank Soal
 export const getQuestionBankById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;

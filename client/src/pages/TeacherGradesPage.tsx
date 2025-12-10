@@ -50,6 +50,7 @@ interface ExamDetailData {
     total_students: number;
     started_count: number;
     finished_count: number;
+    is_published: boolean;
     students: StudentResult[];
 }
 
@@ -100,6 +101,22 @@ const TeacherGradesPage = () => {
             toast.error('Gagal memuat detail nilai');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Publish Handler
+    const handlePublish = async () => {
+        if (!selectedExamId || !examDetail) return;
+
+        try {
+            const newStatus = !examDetail.is_published;
+            await api.post(`/exams/${selectedExamId}/publish`, { is_published: newStatus });
+
+            setExamDetail(prev => prev ? { ...prev, is_published: newStatus } : null);
+            toast.success(`Nilai berhasil ${newStatus ? 'dipublikasikan' : 'disembunyikan'}`);
+        } catch (error) {
+            console.error('Gagal mengubah status publikasi', error);
+            toast.error('Gagal mengubah status publikasi');
         }
     };
 
@@ -369,6 +386,16 @@ const TeacherGradesPage = () => {
                             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 font-bold text-sm shadow-sm transition-all"
                         >
                             <Download className="w-4 h-4" /> Export Excel (XLSX)
+                        </button>
+                        <button
+                            onClick={handlePublish}
+                            className={`px-4 py-2 rounded-lg flex items-center gap-2 font-bold text-sm shadow-sm transition-all text-white ${examDetail?.is_published
+                                ? 'bg-amber-500 hover:bg-amber-600'
+                                : 'bg-indigo-600 hover:bg-indigo-700'
+                                }`}
+                        >
+                            <CheckCircle className="w-4 h-4" />
+                            {examDetail?.is_published ? 'Sembunyikan Nilai' : 'Publikasikan Nilai'}
                         </button>
                     </div>
                 )}

@@ -69,6 +69,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             { expiresIn: '1d' }
         );
 
+        // [BARU] Catat waktu login terakhir
+        await pool.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
+
         res.json({
             message: 'Login berhasil',
             token,
@@ -110,5 +113,60 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Gagal mengambil profil' });
+    }
+};
+
+// --- UPDATE PROFILE ---
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
+    const userId = (req as any).user?.id;
+    const { full_name } = req.body;
+
+    try {
+        const result = await pool.query(
+            `UPDATE users 
+             SET full_name = COALESCE($1, full_name)
+             WHERE id = $2 RETURNING id, username, full_name, role`,
+            [full_name, userId]
+        );
+
+        res.json({ message: 'Profil berhasil diperbarui', user: result.rows[0] });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Gagal memperbarui profil' });
+    }
+};
+
+// --- CHANGE PASSWORD ---
+export const changePassword = async (req: Request, res: Response): Promise<void> => {
+    const userId = (req as any).user?.id;
+    const { oldPassword, newPassword } = req.body;
+
+    try {
+        // 1. Ambil hash password lama
+        const userRes = await pool.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+        if (userRes.rows.length === 0) {
+            res.status(404).json({ message: 'User tidak ditemukan' });
+            return;
+        }
+        const currentHash = userRes.rows[0].password_hash;
+
+        // 2. Verifikasi Password Lama
+        const isMatch = await bcrypt.compare(oldPassword, currentHash);
+        if (!isMatch) {
+            res.status(400).json({ message: 'Password lama salah' });
+            return;
+        }
+
+        // 3. Hash Password Baru
+        const salt = await bcrypt.genSalt(10);
+        const newHash = await bcrypt.hash(newPassword, salt);
+
+        // 4. Update
+        await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [newHash, userId]);
+
+        res.json({ message: 'Password berhasil diubah' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Gagal mengubah password' });
     }
 };

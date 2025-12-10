@@ -1,5 +1,6 @@
+
 import { Router } from 'express';
-import { getExams, createExam, deleteExam, getExamGradesSummary } from '../controllers/examController.js';
+import { getExams, createExam, deleteExam, getExamGradesSummary, publishExam } from '../controllers/examController.js';
 import { getExamMonitorData, forceFinishExam } from '../controllers/monitorController.js';
 import {
     getExamQuestionsForStudent,
@@ -20,14 +21,15 @@ const router = Router();
 router.use(authenticateToken);
 
 // Exam Management Routes
-router.get('/grades', requireAuth, getExamGradesSummary); // Must be before / if / was dynamic, but here it's fine
+router.get('/grades', requireAuth, getExamGradesSummary);
 router.get('/', getExams);
 router.post('/', requireAuth, createExam);
 router.delete('/:id', requireAuth, deleteExam);
+router.post('/:id/publish', requireAuth, publishExam);
 
 // Monitoring Routes
 router.get('/:id/monitor', requireAuth, getExamMonitorData);
-router.post('/:examId/monitor/:studentId/finish', requireAuth, forceFinishExam); // Route baru untuk paksa selesai
+router.post('/:examId/monitor/:studentId/finish', requireAuth, forceFinishExam);
 
 // Student Routes
 router.post('/:examId/verify-token', requireAuth, verifyExamToken);

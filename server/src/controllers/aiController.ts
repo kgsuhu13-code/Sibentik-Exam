@@ -20,9 +20,10 @@ export const generateQuestions = async (req: Request, res: Response): Promise<vo
             
             ATURAN PENTING:
             1. Format output WAJIB JSON Array murni tanpa markdown (jangan pakai \`\`\`json).
-            2. JANGAN gunakan tag HTML apapun (seperti <p>, <br>, <b>, dll) di dalam teks soal maupun opsi. Gunakan teks polos saja.
-            3. Jika ada rumus Matematika/LaTeX, GUNAKAN DOUBLE BACKSLASH agar JSON valid (contoh: gunakan \\\\frac bukan \\frac, \\\\times bukan \\times).
-            4. Pastikan JSON valid dan bisa diparsing langsung.
+            2. JIKA soal/jawaban adalah kode program (seperti HTML tag <p>, <div>, dll), WAJIB gunakan Escape Character Entity: ganti '<' dengan '&lt;' dan '>' dengan '&gt;'. Jangan tulis raw HTML tag untuk kode karena akan dirender browser dan menjadi tidak terlihat.
+            3. Anda BOLEH menggunakan tag HTML standar untuk formatting teks (seperti <b>, <i>, <br>, <pre> untuk blok kode).
+            4. Jika ada rumus Matematika/LaTeX, GUNAKAN DOUBLE BACKSLASH agar JSON valid (contoh: gunakan \\\\frac bukan \\frac, \\\\times bukan \\times).
+            5. Pastikan JSON valid dan bisa diparsing langsung.
 
             Struktur objek JSON:
             [
@@ -45,26 +46,44 @@ export const generateQuestions = async (req: Request, res: Response): Promise<vo
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
+            config: {
+                responseMimeType: "application/json", // Paksa output JSON
+            }
         });
 
-        let text = response.text;
+        // Akses text dari response (sesuaikan dengan SDK yang dipakai)
+        // Jika pakai @google/genai, biasanya structure-nya agak beda, tapi asumsi existing code jalan untuk akses text
+        let text = response.text || "";
+
+        // Fallback jika response.text kosong atau function (tergantung versi SDK)
+        if (typeof text === 'function') {
+            text = (response as any).text();
+        }
 
         if (!text) {
             throw new Error('No text returned from AI');
         }
 
+        console.log('Raw AI Response:', text); // Debugging
+
         // Bersihkan markdown dan ekstrak JSON Array
         const cleanJson = (input: string) => {
-            // Hapus markdown code blocks
+            // 1. Hapus markdown code blocks (```json ... ```)
             let cleaned = input.replace(/```json/gi, '').replace(/```/g, '').trim();
-            // Cari array JSON pertama [...]
-            const match = cleaned.match(/\[[\s\S]*\]/);
-            return match ? match[0] : cleaned;
+
+            // 2. Cari pattern array JSON [...]
+            // Kita cari kurung sikur pembuka pertama dan penutup terakhir
+            const firstBracket = cleaned.indexOf('[');
+            const lastBracket = cleaned.lastIndexOf(']');
+
+            if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+                return cleaned.substring(firstBracket, lastBracket + 1);
+            }
+
+            return cleaned;
         };
 
         text = cleanJson(text);
-
-        console.log('Raw AI Response:', text); // Debugging
 
         const generatedQuestions = JSON.parse(text);
 

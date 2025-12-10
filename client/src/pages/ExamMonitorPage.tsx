@@ -263,12 +263,11 @@ const ExamMonitorPage = () => {
                                     <tr key={student.student_id} className={`hover:bg-slate-50 transition-colors ${student.is_locked ? 'bg-red-50' : ''}`}>
                                         <td className="px-6 py-4">
                                             <div className="font-medium text-slate-800 flex items-center gap-2">
-                                                {student.student_name}
+                                                {student.student_name.split(' ')[0]}
                                                 {student.is_locked && (
                                                     <Lock className="w-4 h-4 text-red-600" />
                                                 )}
                                             </div>
-                                            <div className="text-xs text-slate-500">{student.username}</div>
                                             {student.violation_count > 0 && (
                                                 <button
                                                     onClick={() => setViolationModal({ isOpen: true, studentName: student.student_name, logs: student.violation_log || [] })}

@@ -60,6 +60,8 @@ const initDb = async () => {
                 student_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 UNIQUE(exam_id, student_id)
             );
+
+            ALTER TABLE exams ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT FALSE;
         `);
         console.log('✅ Tabel exams berhasil dibuat/verifikasi');
     } catch (error) {

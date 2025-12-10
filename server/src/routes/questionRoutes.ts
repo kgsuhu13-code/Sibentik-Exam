@@ -10,7 +10,8 @@ import {
     getQuestionBankById,
     updateQuestionBank,
     updateQuestion,
-    duplicateQuestionBank
+    duplicateQuestionBank,
+    deleteQuestionsBulk
 } from '../controllers/questionController.js';
 import { generateQuestions } from '../controllers/aiController.js';
 import { authenticateToken, requireAuth } from '../middleware/authMiddleware.js';
@@ -33,6 +34,7 @@ router.get('/banks/:bankId/questions', getQuestionsByBankId);
 router.post('/questions', requireAuth, addQuestion);
 router.post('/generate-ai', requireAuth, generateQuestions);
 router.put('/questions/:id', requireAuth, updateQuestion);
+router.post('/questions/bulk-delete', requireAuth, deleteQuestionsBulk);
 router.delete('/questions/:id', requireAuth, deleteQuestion);
 
 export default router;

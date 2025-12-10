@@ -141,6 +141,7 @@ export const getExamMonitorData = async (req: Request, res: Response): Promise<v
         res.json({
             exam_title: exam.title,
             exam_token: exam.exam_token,
+            is_published: exam.is_published,
             created_by: exam.created_by,
             class_level: classLevel,
             total_students: students.length,

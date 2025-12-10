@@ -22,6 +22,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import AdminSchoolsPage from './pages/AdminSchoolsPage';
 import AdminSchoolDetailPage from './pages/AdminSchoolDetailPage';
 import TeacherGradesPage from './pages/TeacherGradesPage';
+import TeacherStudentsPage from './pages/TeacherStudentsPage';
+import TeacherSettingsPage from './pages/TeacherSettingsPage';
 
 // Komponen Dummy untuk Placeholder Menu Lain
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -46,9 +48,9 @@ function App() {
                                 <Route path="/question-bank" element={<QuestionBankPage />} />
                                 <Route path="/exam-schedule" element={<ExamSchedulePage />} />
                                 <Route path="/monitoring" element={<MonitoringDashboardPage />} />
-                                <Route path="/students" element={<PlaceholderPage title="Data Siswa" />} />
+                                <Route path="/students" element={<TeacherStudentsPage />} />
                                 <Route path="/grades" element={<TeacherGradesPage />} />
-                                <Route path="/settings" element={<PlaceholderPage title="Pengaturan" />} />
+                                <Route path="/settings" element={<TeacherSettingsPage />} />
                             </Route>
 
                             {/* Rute Editor Soal (Full Screen) */}
@@ -60,11 +62,16 @@ function App() {
 
                         {/* Rute Siswa (Protected) */}
                         <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+                            {/* Dashboard & Halaman Utama Siswa (Full Screen Mobile Style) */}
+                            <Route path="/student-dashboard" element={<StudentDashboard />} />
+                            <Route path="/student-exams" element={<StudentExamsPage />} />
+                            <Route path="/student-history" element={<StudentHistoryPage />} />
+
+                            {/* StudentLayout tetap ada jika dibutuhkan nanti */}
                             <Route element={<StudentLayout />}>
-                                <Route path="/student-dashboard" element={<StudentDashboard />} />
-                                <Route path="/student-exams" element={<StudentExamsPage />} />
-                                <Route path="/student-history" element={<StudentHistoryPage />} />
+                                {/* Future pages */}
                             </Route>
+
                             {/* Exam Interface (Full Screen) */}
                             <Route path="/exam/:id" element={<StudentExamPage />} />
                         </Route>

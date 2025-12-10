@@ -286,7 +286,7 @@ export const getStudentHistory = async (req: Request, res: Response): Promise<vo
     try {
         // 1. Ambil sesi ujian yang sudah selesai
         const sessionsResult = await pool.query(`
-            SELECT es.*, e.title as exam_title, e.bank_id, qb.subject, qb.class_level
+            SELECT es.*, e.title as exam_title, e.is_published, e.bank_id, qb.subject, qb.class_level
             FROM exam_sessions es
             JOIN exams e ON es.exam_id = e.id
             JOIN question_banks qb ON e.bank_id = qb.id
@@ -323,6 +323,7 @@ export const getStudentHistory = async (req: Request, res: Response): Promise<vo
 
             history.push({
                 exam_id: session.exam_id,
+                is_published: !!session.is_published,
                 exam_title: session.exam_title,
                 subject: session.subject,
                 class_level: session.class_level,

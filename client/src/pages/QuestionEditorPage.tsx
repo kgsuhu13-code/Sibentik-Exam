@@ -157,6 +157,10 @@ const QuestionEditorPage = () => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSavingSettings, setIsSavingSettings] = useState(false);
 
+    // Multi-select State
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
     const fetchBankDetails = async () => {
         try {
             const response = await api.get(`/questions/banks/${id}`);
@@ -322,6 +326,54 @@ const QuestionEditorPage = () => {
                 toast.error('Gagal menghapus soal');
             }
         }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.length === 0) return;
+
+        const result = await showConfirm(
+            'Hapus Banyak Soal?',
+            `Anda akan menghapus ${selectedIds.length} soal terpilih. Tindakan ini tidak dapat dibatalkan!`,
+            `Ya, Hapus ${selectedIds.length} Soal`,
+            'Batal',
+            'warning',
+            'danger'
+        );
+
+        if (result.isConfirmed) {
+            try {
+                await api.post('/questions/questions/bulk-delete', { ids: selectedIds });
+
+                // Cleanup local storage drafts
+                selectedIds.forEach(qid => {
+                    localStorage.removeItem(`question_draft_bank_${id}_q_${qid}`);
+                });
+
+                // Reset state
+                setSelectedIds([]);
+                setIsSelectionMode(false);
+
+                // If currently selected question was deleted, reset editor
+                if (selectedQuestionId && selectedIds.includes(selectedQuestionId)) {
+                    setContent('');
+                    setOptions({ A: '', B: '', C: '', D: '', E: '' });
+                    setCorrectAnswer('A');
+                    setSelectedQuestionId(null);
+                }
+
+                fetchQuestions();
+                await showSuccess('Terhapus!', `${selectedIds.length} soal berhasil dihapus.`);
+            } catch (error) {
+                console.error('Gagal hapus massal', error);
+                toast.error('Gagal menghapus soal terpilih');
+            }
+        }
+    };
+
+    const toggleSelection = (qid: number) => {
+        setSelectedIds(prev =>
+            prev.includes(qid) ? prev.filter(id => id !== qid) : [...prev, qid]
+        );
     };
 
     useEffect(() => {
@@ -658,47 +710,82 @@ const QuestionEditorPage = () => {
                     {/* Left Sidebar: Navigation */}
                     <aside className="w-72 bg-white border-r border-slate-200 flex flex-col z-10">
                         <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-                            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Daftar Soal</h2>
+                            <div className="flex items-center justify-between mb-3">
+                                <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Daftar Soal</h2>
+                                <button
+                                    onClick={() => {
+                                        setIsSelectionMode(!isSelectionMode);
+                                        setSelectedIds([]);
+                                    }}
+                                    className={`text-xs font-bold px-2 py-1 rounded transition-colors ${isSelectionMode ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-blue-600'
+                                        }`}
+                                >
+                                    {isSelectionMode ? 'Batal Pilih' : 'Pilih'}
+                                </button>
+                            </div>
                             <div className="grid grid-cols-5 gap-2">
                                 {questions.map((q, index) => (
                                     <button
                                         key={q.id}
-                                        onClick={() => loadQuestion(q)}
-                                        className={`aspect-square rounded-lg flex items-center justify-center text-sm font-bold transition-all border ${selectedQuestionId === q.id
-                                            ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105'
-                                            : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50'
+                                        onClick={() => isSelectionMode ? toggleSelection(q.id) : loadQuestion(q)}
+                                        className={`aspect-square rounded-lg flex items-center justify-center text-sm font-bold transition-all border relative ${isSelectionMode
+                                            ? selectedIds.includes(q.id)
+                                                ? 'bg-red-50 text-red-600 border-red-500' // Selected for deletion
+                                                : 'bg-white text-slate-400 border-slate-200 hover:border-red-300'
+                                            : selectedQuestionId === q.id
+                                                ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105'
+                                                : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50'
                                             }`}
                                     >
                                         {index + 1}
+                                        {isSelectionMode && selectedIds.includes(q.id) && (
+                                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border border-white"></div>
+                                        )}
                                     </button>
                                 ))}
-                                <button
-                                    onClick={() => {
-                                        // Cek draft soal baru
-                                        const hasDraft = checkDraft(0); // 0 atau 'new'
-                                        if (!hasDraft) {
-                                            setContent('');
-                                            setOptions({ A: '', B: '', C: '', D: '', E: '' });
-                                            setCorrectAnswer('A');
-                                            setSelectedQuestionId(null);
-                                            setSaveStatus('idle');
-                                        }
-                                    }}
-                                    className="aspect-square rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
-                                    title="Tambah Soal"
-                                >
-                                    <Plus className="w-5 h-5" />
-                                </button>
+                                {!isSelectionMode && (
+                                    <button
+                                        onClick={() => {
+                                            // Cek draft soal baru
+                                            const hasDraft = checkDraft(0); // 0 atau 'new'
+                                            if (!hasDraft) {
+                                                setContent('');
+                                                setOptions({ A: '', B: '', C: '', D: '', E: '' });
+                                                setCorrectAnswer('A');
+                                                setSelectedQuestionId(null);
+                                                setSaveStatus('idle');
+                                            }
+                                        }}
+                                        className="aspect-square rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                        title="Tambah Soal"
+                                    >
+                                        <Plus className="w-5 h-5" />
+                                    </button>
+                                )}
                             </div>
 
-                            {/* AI Button */}
-                            <button
-                                onClick={() => setShowAiModal(true)}
-                                className="w-full mt-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl flex items-center justify-center gap-2 text-xs font-bold shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
-                            >
-                                <Sparkles className="w-4 h-4" />
-                                Generate with AI
-                            </button>
+                            {/* Action Buttons */}
+                            {isSelectionMode ? (
+                                <button
+                                    onClick={handleBulkDelete}
+                                    disabled={selectedIds.length === 0}
+                                    className={`w-full mt-4 py-2 rounded-xl flex items-center justify-center gap-2 text-xs font-bold shadow-md transition-all ${selectedIds.length > 0
+                                        ? 'bg-red-600 text-white hover:bg-red-700 hover:scale-[1.02]'
+                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                        }`}
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Hapus {selectedIds.length} Soal
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => setShowAiModal(true)}
+                                    className="w-full mt-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl flex items-center justify-center gap-2 text-xs font-bold shadow-md hover:shadow-lg hover:scale-[1.02] transition-all"
+                                >
+                                    <Sparkles className="w-4 h-4" />
+                                    Generate with AI
+                                </button>
+                            )}
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-4">

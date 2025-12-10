@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -7,17 +8,16 @@ import {
     ListTodo,
     Calendar,
     Clock,
-    Search,
     CheckCircle,
     PlayCircle,
     Lock,
     Hourglass,
     X,
-    KeyRound,
     AlertCircle,
-    ArrowRight,
     XCircle,
-    Loader2
+    LayoutDashboard,
+    History,
+    Search
 } from 'lucide-react';
 
 interface Exam {
@@ -68,7 +68,6 @@ const StudentExamsPage = () => {
             navigate(`/exam/${exam.id}`);
             return;
         }
-
         // Buka Modal Token
         setSelectedExam(exam);
         setTokenInput('');
@@ -101,220 +100,224 @@ const StudentExamsPage = () => {
         }
     };
 
-    const filteredExams = exams.filter(exam =>
-        exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        exam.subject.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    const getStatusBadge = (exam: Exam) => {
+    const getStatusContent = (exam: Exam) => {
         const now = new Date();
         const start = new Date(exam.start_time);
         const end = new Date(exam.end_time);
 
         if (exam.student_status === 'completed') {
-            return (
-                <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full flex items-center gap-1 w-fit">
-                    <CheckCircle className="w-3 h-3" /> Selesai
-                </span>
-            );
+            return {
+                badge: <span className="px-3 py-1 bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1 w-fit"><CheckCircle className="w-3 h-3" /> Selesai</span>,
+                action: null
+            };
         }
         if (now >= start && now <= end) {
-            return (
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full flex items-center gap-1 w-fit animate-pulse">
-                    <Hourglass className="w-3 h-3" /> Berlangsung
-                </span>
-            );
+            return {
+                badge: <span className="px-3 py-1 bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1 w-fit animate-pulse"><Hourglass className="w-3 h-3" /> Berlangsung</span>,
+                action: (
+                    <button
+                        onClick={() => handleStartClick(exam)}
+                        className="w-full mt-4 py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-blue-700"
+                    >
+                        <PlayCircle className="w-5 h-5 fill-current" /> Kerjakan Sekarang
+                    </button>
+                )
+            };
         }
         if (now < start) {
-            return (
-                <span className="px-3 py-1 bg-slate-100 text-slate-600 text-xs font-bold rounded-full flex items-center gap-1 w-fit">
-                    <Lock className="w-3 h-3" /> Akan Datang
-                </span>
-            );
+            return {
+                badge: <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1 w-fit"><Lock className="w-3 h-3" /> Belum Mulai</span>,
+                action: (
+                    <button disabled className="w-full mt-4 py-3 bg-slate-100 text-slate-400 font-bold rounded-xl cursor-not-allowed flex items-center justify-center gap-2">
+                        <Lock className="w-4 h-4" /> Segera Hadir
+                    </button>
+                )
+            };
         }
-        return (
-            <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full flex items-center gap-1 w-fit">
-                <XCircle className="w-3 h-3" /> Berakhir
-            </span>
-        );
+        return {
+            badge: <span className="px-3 py-1 bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wider rounded-full flex items-center gap-1 w-fit"><XCircle className="w-3 h-3" /> Berakhir</span>,
+            action: null
+        };
     };
 
     if (loading) {
         return (
-            <div className="flex justify-center py-10">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
             </div>
         );
     }
 
+    // Filter & Sort
+    const filteredExams = exams.filter(exam =>
+        exam.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        exam.subject.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const sortedExams = [...filteredExams].sort((a, b) => {
+        const now = new Date();
+        const startA = new Date(a.start_time);
+        const endA = new Date(a.end_time);
+        const startB = new Date(b.start_time);
+        const endB = new Date(b.end_time);
+
+        const isOngoingA = now >= startA && now <= endA && a.student_status !== 'completed';
+        const isOngoingB = now >= startB && now <= endB && b.student_status !== 'completed';
+
+        if (isOngoingA && !isOngoingB) return -1;
+        if (!isOngoingA && isOngoingB) return 1;
+
+        return startA.getTime() - startB.getTime();
+    });
+
     return (
-        <div className="space-y-6 pb-24 px-1 md:px-0 relative">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200">
-                        <ListTodo className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-800">Daftar Ujian</h1>
-                        <p className="text-slate-500 text-sm">Pilih ujian yang tersedia.</p>
+        <div className="min-h-screen bg-white font-sans flex flex-col relative overflow-hidden pb-20">
+
+            {/* --- TOP SECTION --- */}
+            <div className="px-6 pt-10 pb-8 bg-white z-10">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 border border-blue-100 shadow-sm">
+                            <ListTodo className="w-6 h-6" strokeWidth={2.5} />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">
+                                Daftar Ujian
+                            </h1>
+                            <p className="text-slate-500 text-xs font-medium mt-0.5">Jadwal ujian yang tersedia untukmu.</p>
+                        </div>
                     </div>
                 </div>
 
-                <div className="relative w-full md:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                {/* Search Bar */}
+                <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-300" />
                     <input
                         type="text"
-                        placeholder="Cari mapel atau judul..."
+                        placeholder="Cari ujian..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 shadow-sm transition-all font-medium text-slate-700 placeholder:text-slate-400"
                     />
                 </div>
             </div>
 
-            {/* Grid Layout */}
-            {filteredExams.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredExams.map((exam) => {
-                        const now = new Date();
-                        const start = new Date(exam.start_time);
-                        const end = new Date(exam.end_time);
-                        const isOngoing = now >= start && now <= end;
-                        const isExpired = now > end;
+            {/* --- BOTTOM SECTION (BLUE GRADIENT) --- */}
+            <div className="flex-1 bg-gradient-to-b from-blue-600 to-indigo-700 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(37,99,235,0.2)] relative z-0 pt-8 pb-24 -mt-4 overflow-hidden">
 
-                        return (
-                            <div key={exam.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-all flex flex-col">
-                                {/* Card Header */}
-                                <div className="p-5 border-b border-slate-50 bg-slate-50/50 flex justify-between items-start">
-                                    <div className="flex flex-col items-center justify-center w-14 h-14 bg-white rounded-xl border border-slate-200 shadow-sm text-slate-700">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                            {start.toLocaleString('id-ID', { month: 'short' })}
-                                        </span>
-                                        <span className="text-xl font-bold leading-none">
-                                            {start.getDate()}
-                                        </span>
-                                    </div>
-                                    {getStatusBadge(exam)}
-                                </div>
+                {/* Decoration Circles */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
 
-                                {/* Card Body */}
-                                <div className="p-5 flex-1">
-                                    <div className="mb-4">
-                                        <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md mb-2 inline-block">
-                                            {exam.subject}
-                                        </span>
-                                        <h3 className="text-lg font-bold text-slate-800 leading-tight line-clamp-2">
+                <div className="relative z-10 px-6 h-full overflow-y-auto pb-20">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {sortedExams.length > 0 ? (
+                            sortedExams.map((exam) => {
+                                const start = new Date(exam.start_time);
+                                const end = new Date(exam.end_time);
+                                const { badge, action } = getStatusContent(exam);
+
+                                return (
+                                    <div key={exam.id} className="bg-white rounded-[2rem] p-6 shadow-xl shadow-blue-900/10 border border-slate-100 relative overflow-hidden group">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <span className="inline-block px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase tracking-wider rounded-lg">
+                                                {exam.subject}
+                                            </span>
+                                            {badge}
+                                        </div>
+
+                                        <h3 className="text-lg font-extrabold text-slate-800 leading-tight mb-2 group-hover:text-blue-600 transition-colors">
                                             {exam.title}
                                         </h3>
-                                    </div>
 
-                                    <div className="flex items-center gap-4 text-sm text-slate-500">
-                                        <div className="flex items-center gap-1.5">
+                                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500 bg-slate-50 p-2.5 rounded-xl border border-slate-100 w-fit mb-2">
+                                            <Calendar className="w-4 h-4 text-slate-400" />
+                                            <span>{start.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                                            <div className="w-px h-3 bg-slate-300 mx-1"></div>
                                             <Clock className="w-4 h-4 text-slate-400" />
-                                            <span>
-                                                {start.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                                                {' - '}
-                                                {end.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
+                                            <span>{start.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
-                                    </div>
-                                </div>
 
-                                {/* Card Footer (Action) */}
-                                <div className="p-5 pt-0 mt-auto">
-                                    {exam.student_status === 'completed' ? (
-                                        <button
-                                            disabled
-                                            className="w-full py-3 bg-slate-100 text-slate-400 font-bold rounded-xl cursor-not-allowed flex items-center justify-center gap-2"
-                                        >
-                                            <CheckCircle className="w-5 h-5" />
-                                            Sudah Dikerjakan
-                                        </button>
-                                    ) : isOngoing ? (
-                                        <button
-                                            onClick={() => handleStartClick(exam)}
-                                            className={`w-full py-3 font-bold rounded-xl shadow-sm flex items-center justify-center gap-2 transition-transform active:scale-95 ${exam.student_status === 'ongoing'
-                                                ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500'
-                                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                                                }`}
-                                        >
-                                            {exam.student_status === 'ongoing' ? (
-                                                <>
-                                                    <PlayCircle className="w-5 h-5" /> Lanjutkan
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Lock className="w-5 h-5" /> Kerjakan
-                                                </>
-                                            )}
-                                        </button>
-                                    ) : isExpired ? (
-                                        <button
-                                            disabled
-                                            className="w-full py-3 bg-red-50 text-red-400 font-bold rounded-xl cursor-not-allowed border border-red-100 flex items-center justify-center gap-2"
-                                        >
-                                            <XCircle className="w-5 h-5" />
-                                            Tidak Mengikuti
-                                        </button>
-                                    ) : (
-                                        <button
-                                            disabled
-                                            className="w-full py-3 bg-slate-50 text-slate-400 font-bold rounded-xl cursor-not-allowed border border-slate-100"
-                                        >
-                                            Belum Tersedia
-                                        </button>
-                                    )}
+                                        {action}
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="col-span-full flex flex-col items-center justify-center py-20 text-white/80">
+                                <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-4 text-white">
+                                    <Search className="w-8 h-8" />
                                 </div>
+                                <p className="text-lg font-bold">Tidak ada ujian ditemukan</p>
+                                <p className="text-sm opacity-70">Coba kata kunci lain atau cek lagi nanti.</p>
                             </div>
-                        );
-                    })}
-                </div>
-            ) : (
-                <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-2xl border border-slate-100 border-dashed">
-                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                        <Search className="w-8 h-8 text-slate-300" />
+                        )}
                     </div>
-                    <h3 className="text-lg font-bold text-slate-800">Tidak ada ujian ditemukan</h3>
-                    <p className="text-slate-500">Coba cari dengan kata kunci lain.</p>
                 </div>
-            )}
+            </div>
+
+            {/* MOBILE BOTTOM NAVIGATION BAR */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 pb-safe">
+                <div className="flex justify-around items-center h-16">
+                    <button
+                        onClick={() => navigate('/student-dashboard')}
+                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 text-slate-400 hover:text-slate-600`}
+                    >
+                        <LayoutDashboard className="w-6 h-6" strokeWidth={2} />
+                        <span className="text-[10px] font-medium">Dashboard</span>
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/student-exams')}
+                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 text-blue-600`}
+                    >
+                        <ListTodo className="w-6 h-6" strokeWidth={2.5} />
+                        <span className="text-[10px] font-medium">Ujian</span>
+                    </button>
+
+                    <button
+                        onClick={() => navigate('/student-history')}
+                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 text-slate-400 hover:text-slate-600`}
+                    >
+                        <History className="w-6 h-6" strokeWidth={2} />
+                        <span className="text-[10px] font-medium">Riwayat</span>
+                    </button>
+                </div>
+            </div>
 
             {/* MODERN TOKEN MODAL */}
             {isTokenModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 duration-200">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-lg font-bold text-slate-800">Masukkan Token</h3>
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-slate-900/80 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 sm:p-8 animate-in slide-in-from-bottom duration-300 pb-10">
+                        <div className="flex justify-center mb-2">
+                            <div className="w-12 h-1.5 bg-slate-200 rounded-full"></div>
+                        </div>
+
+                        <div className="flex justify-between items-start mb-6 mt-4">
+                            <div>
+                                <h3 className="text-xl font-extrabold text-slate-800">Mulai Ujian</h3>
+                                <p className="text-slate-500 text-sm mt-1">{selectedExam?.title}</p>
+                            </div>
                             <button
                                 onClick={() => setIsTokenModalOpen(false)}
-                                className="p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+                                className="p-2 bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200 transition-colors"
                             >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="text-center mb-6">
-                            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <KeyRound className="w-8 h-8" />
-                            </div>
-                            <h4 className="font-bold text-slate-800 mb-1">{selectedExam?.title}</h4>
-                            <p className="text-xs text-slate-500">{selectedExam?.subject}</p>
-                        </div>
-
                         <form onSubmit={submitToken}>
                             <div className="mb-6">
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 text-center">Masukkan Kode Token</label>
                                 <input
                                     type="text"
                                     value={tokenInput}
                                     onChange={(e) => setTokenInput(e.target.value.toUpperCase())}
-                                    placeholder="TOKEN"
-                                    className="w-full text-center text-2xl font-bold tracking-[0.2em] py-3 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all placeholder:tracking-normal placeholder:text-slate-300 uppercase"
+                                    placeholder="• • • • • •"
+                                    className="w-full text-center text-3xl font-bold tracking-[0.3em] py-5 bg-slate-50 border-2 border-slate-200 rounded-2xl focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 outline-none transition-all placeholder:text-slate-300 uppercase text-slate-800"
                                     autoFocus
                                 />
                                 {tokenError && (
-                                    <div className="flex items-center justify-center gap-1 text-red-500 text-xs mt-2 font-medium animate-in slide-in-from-top-1">
-                                        <AlertCircle className="w-3 h-3" />
+                                    <div className="flex items-center justify-center gap-1.5 text-red-500 text-sm mt-3 font-bold animate-pulse">
+                                        <AlertCircle className="w-4 h-4" />
                                         {tokenError}
                                     </div>
                                 )}
@@ -323,18 +326,9 @@ const StudentExamsPage = () => {
                             <button
                                 type="submit"
                                 disabled={!tokenInput || verifying}
-                                className="w-full py-3.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-blue-200"
+                                className="w-full py-4 bg-blue-600 text-white font-bold text-lg rounded-2xl hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-blue-200"
                             >
-                                {verifying ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                        Memverifikasi...
-                                    </>
-                                ) : (
-                                    <>
-                                        Mulai Ujian <ArrowRight className="w-4 h-4" />
-                                    </>
-                                )}
+                                {verifying ? 'Memproses...' : 'Mulai Mengerjakan'}
                             </button>
                         </form>
                     </div>
