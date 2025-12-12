@@ -72,9 +72,7 @@ const ExamMonitorPage = () => {
 
     useEffect(() => {
         fetchMonitorData();
-        // Auto refresh every 5 seconds
-        const interval = setInterval(fetchMonitorData, 5000);
-        return () => clearInterval(interval);
+        // Auto refresh dihapus untuk mengurangi beban server (ganti manual refresh)
     }, [id]);
 
 

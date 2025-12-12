@@ -160,8 +160,13 @@ const ExamSchedulePage = () => {
         e.preventDefault();
         setCreating(true);
         try {
+            const startTimeISO = new Date(formData.start_time).toISOString();
+            const endTimeISO = new Date(formData.end_time).toISOString();
+
             await api.post('/exams', {
                 ...formData,
+                start_time: startTimeISO,
+                end_time: endTimeISO,
                 bank_id: parseInt(formData.bank_id),
                 student_ids: selectedStudentIds // Kirim array ID siswa
             });
@@ -500,13 +505,13 @@ const ExamSchedulePage = () => {
                                                                 key={student.id}
                                                                 onClick={() => toggleStudent(student.id)}
                                                                 className={`flex items-center p-3 rounded-lg border cursor-pointer transition-colors ${selectedStudentIds.includes(student.id)
-                                                                        ? 'bg-blue-50 border-blue-200'
-                                                                        : 'bg-white border-slate-200 hover:border-blue-300'
+                                                                    ? 'bg-blue-50 border-blue-200'
+                                                                    : 'bg-white border-slate-200 hover:border-blue-300'
                                                                     }`}
                                                             >
                                                                 <div className={`w-5 h-5 rounded border mr-3 flex items-center justify-center ${selectedStudentIds.includes(student.id)
-                                                                        ? 'bg-blue-600 border-blue-600 text-white'
-                                                                        : 'border-slate-300 text-transparent'
+                                                                    ? 'bg-blue-600 border-blue-600 text-white'
+                                                                    : 'border-slate-300 text-transparent'
                                                                     }`}>
                                                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                                                                 </div>

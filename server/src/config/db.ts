@@ -13,6 +13,9 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     // PENTING: Neon mewajibkan koneksi SSL
     ssl: true,
+    max: 20, // Maksimal 20 koneksi di pool (Untuk handle ~500 siswa)
+    idleTimeoutMillis: 30000, // Tutup koneksi nganggur setelah 30 detik
+    connectionTimeoutMillis: 10000, // Batas waktu tunggu koneksi baru (10 detik)
 });
 
 pool.on('connect', () => {

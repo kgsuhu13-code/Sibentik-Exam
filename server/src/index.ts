@@ -46,8 +46,8 @@ const initDb = async () => {
                 id SERIAL PRIMARY KEY,
                 bank_id INTEGER REFERENCES question_banks(id) ON DELETE CASCADE,
                 title VARCHAR(255) NOT NULL,
-                start_time TIMESTAMP NOT NULL,
-                end_time TIMESTAMP NOT NULL,
+                start_time TIMESTAMPTZ NOT NULL,
+                end_time TIMESTAMPTZ NOT NULL,
                 duration INTEGER NOT NULL,
                 exam_token VARCHAR(10) NOT NULL,
                 is_active BOOLEAN DEFAULT TRUE,
@@ -62,6 +62,16 @@ const initDb = async () => {
             );
 
             ALTER TABLE exams ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT FALSE;
+
+            -- Migrasi Timezone: Ubah TIMESTAMP biasa menjadi TIMESTAMPTZ
+            ALTER TABLE exams 
+            ALTER COLUMN start_time TYPE TIMESTAMPTZ USING start_time AT TIME ZONE 'UTC',
+            ALTER COLUMN end_time TYPE TIMESTAMPTZ USING end_time AT TIME ZONE 'UTC';
+            
+            -- Pastikan tabel exam_sessions juga menggunakan TIMESTAMPTZ jika ada waktu
+            ALTER TABLE exam_sessions 
+            ALTER COLUMN start_time TYPE TIMESTAMPTZ USING start_time AT TIME ZONE 'UTC',
+            ALTER COLUMN end_time TYPE TIMESTAMPTZ USING end_time AT TIME ZONE 'UTC';
         `);
         console.log('✅ Tabel exams berhasil dibuat/verifikasi');
     } catch (error) {
@@ -70,6 +80,21 @@ const initDb = async () => {
 };
 
 initDb();
+
+// Serve Frontend (Production Mode)
+// Di Google Cloud, kita akan copy build frontend ke folder 'public'
+const clientBuildPath = path.join(process.cwd(), 'public');
+app.use(express.static(clientBuildPath));
+
+// SPA Fallback: Any route not handled by API will serve index.html
+app.get(/.*/, (req, res) => {
+    // Cek apakah request ditujukan untuk API tapi tidak ada route-nya (404 API)
+    if (req.path.startsWith('/api')) {
+        res.status(404).json({ message: 'API Endpoint not found' });
+        return;
+    }
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+});
 
 // Jalankan Server
 app.listen(PORT, () => {
