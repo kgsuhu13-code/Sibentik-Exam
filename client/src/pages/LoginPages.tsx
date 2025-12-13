@@ -63,13 +63,13 @@ const LoginPage: React.FC = () => {
               <img src="/logo.png" alt="Logo" className="w-12 h-12 rounded-lg object-contain bg-white shadow-md" />
               <h1 className="text-2xl font-bold tracking-wide">SIBENTIK EXAM</h1>
             </div>
-            <h2 className="text-3xl font-bold mb-4">Selamat Datang di Sistem Ujian Online</h2>
+            <h2 className="text-3xl font-bold mb-4">Platform Ujian Sekolah Terintegrasi</h2>
             <p className="text-blue-100 leading-relaxed">
-              Platform ujian modern yang dapat diakses melalui komputer maupun ponsel pintar (HP), dilengkapi fitur canggih anti-curang untuk menjaga integritas ujian, serta mendukung digitalisasi sekolah secara menyeluruh.
+              Solusi asesmen digital #1 untuk sekolah modern. Kelola ujian, bank soal, dan analisis nilai siswa dalam satu ekosistem cloud yang aman dan terukur.
             </p>
           </div>
           <div className="text-sm text-blue-200">
-            &copy; {new Date().getFullYear()} SIBENTIK. All rights reserved.
+            &copy; {new Date().getFullYear()} SIBENTIK EXAM. Enterprise Edition.
           </div>
 
           {/* Decorative Circles */}
@@ -81,8 +81,8 @@ const LoginPage: React.FC = () => {
         {/* Right Side - Login Form */}
         <div className="w-full md:w-1/2 p-8 md:p-12 bg-white flex flex-col justify-center">
           <div className="mb-8 text-center md:text-left">
-            <h3 className="text-2xl font-bold text-slate-800 mb-2">Login Peserta & Guru</h3>
-            <p className="text-slate-500">Silakan masukkan kredensial Anda untuk melanjutkan.</p>
+            <h3 className="text-2xl font-bold text-slate-800 mb-2">Masuk ke Akun</h3>
+            <p className="text-slate-500">Akses dashboard Guru, Siswa, atau Administrator.</p>
           </div>
 
           {error && (
@@ -96,7 +96,7 @@ const LoginPage: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Username / NISN</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">ID Pengguna (Username / NISN)</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -109,13 +109,13 @@ const LoginPage: React.FC = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-slate-50 text-slate-900 placeholder-slate-400"
-                  placeholder="Masukkan username anda"
+                  placeholder="Contoh: 12345678"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Password</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Kata Sandi</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg className="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -128,7 +128,7 @@ const LoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors bg-slate-50 text-slate-900 placeholder-slate-400"
-                  placeholder="Masukkan password anda"
+                  placeholder="••••••••"
                 />
               </div>
             </div>
@@ -153,14 +153,17 @@ const LoginPage: React.FC = () => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Memproses...
+                  Memproses Akses...
                 </span>
-              ) : 'Masuk ke Aplikasi'}
+              ) : 'Masuk Aplikasi'}
             </button>
           </form>
 
           <div className="mt-8 text-center text-sm text-slate-500">
-            <p>Mengalami kendala saat login? <a href="#" className="font-medium text-blue-600 hover:text-blue-500">Hubungi Proktor</a></p>
+            <p className="mb-2">Sekolah Anda belum terdaftar?</p>
+            <a href="/" className="font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-4 py-2 rounded-full inline-block transition-colors">
+              Daftarkan Sekolah Sekarang
+            </a>
           </div>
         </div>
       </div>

@@ -51,6 +51,7 @@ const LandingPage: React.FC = () => {
 
                         <div className="hidden md:flex items-center space-x-8">
                             <a href="#features" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Fitur</a>
+                            <a href="#pricing" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Harga</a>
                             <a href="#about" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Tentang Kami</a>
                             <a href="#contact" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Kontak</a>
                         </div>
@@ -179,7 +180,117 @@ const LandingPage: React.FC = () => {
                 </div>
             </section>
 
-            {/* --- ABOUT SECTION --- */}
+            {/* --- PRICING SECTION --- */}
+            <section id="pricing" className="py-20 bg-white">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                        className="text-center max-w-2xl mx-auto mb-16"
+                    >
+                        <h2 className="text-3xl font-bold text-slate-900 mb-4">Harga Simpel & Transparan</h2>
+                        <p className="text-slate-500">
+                            Tidak ada biaya tersembunyi. Bayar hanya sesuai jumlah pemakai aktif di sekolah Anda.
+                        </p>
+                    </motion.div>
+
+                    <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                        {/* Standard Plan */}
+                        <motion.div
+                            initial={{ opacity: 0, x: -30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.6, delay: 0.1 }}
+                            className="relative bg-gradient-to-b from-white to-blue-50 p-8 rounded-3xl border-2 border-blue-100 shadow-xl overflow-hidden group hover:border-blue-500 transition-colors"
+                        >
+                            <div className="absolute top-0 right-0 p-4">
+                                <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold uppercase tracking-wider rounded-full">
+                                    Paling Populer
+                                </span>
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-800 mb-2">Paket Sekolah</h3>
+                            <p className="text-slate-500 text-sm mb-6">Cocok untuk SD, SMP, SMA/K</p>
+
+                            <div className="flex items-baseline gap-1 mb-2">
+                                <span className="text-4xl font-extrabold text-blue-600">Rp 10.000</span>
+                                <span className="text-slate-500 font-bold">/ siswa</span>
+                            </div>
+                            <p className="text-sm text-slate-400 mb-8 font-medium">per bulan</p>
+
+                            <ul className="space-y-4 mb-8">
+                                <li className="flex items-start gap-3 text-slate-600">
+                                    <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                                    <span className="text-sm font-medium">Akses Full Fitur CBT</span>
+                                </li>
+                                <li className="flex items-start gap-3 text-slate-600">
+                                    <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                                    <span className="text-sm font-medium">Bank Soal & AI Generator</span>
+                                </li>
+                                <li className="flex items-start gap-3 text-slate-600">
+                                    <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                                    <span className="text-sm font-medium">Aplikasi Android & iOS</span>
+                                </li>
+                                <li className="flex items-start gap-3 text-slate-600">
+                                    <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                                    <span className="text-sm font-medium">Server Stabil & Cepat (Redis)</span>
+                                </li>
+                                <li className="flex items-start gap-3 text-slate-600">
+                                    <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                                    <span className="text-sm font-medium">Support Prioritas</span>
+                                </li>
+                            </ul>
+
+                            <button className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1 transition-all">
+                                Pilih Paket Ini
+                            </button>
+                            <p className="text-center text-xs text-slate-400 mt-4">Minimum 50 siswa</p>
+                        </motion.div>
+
+                        {/* Custom / Enterprise Plan */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 30 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.6, delay: 0.2 }}
+                            className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl transition-all flex flex-col justify-between"
+                        >
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 mb-2">Enterprise / Yayasan</h3>
+                                <p className="text-slate-500 text-sm mb-8">Solusi khusus untuk banyak sekolah</p>
+
+                                <div className="mb-8">
+                                    <span className="text-3xl font-extrabold text-slate-800">Hubungi Kami</span>
+                                </div>
+
+                                <ul className="space-y-4 mb-8">
+                                    <li className="flex items-start gap-3 text-slate-600">
+                                        <CheckCircle className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                                        <span className="text-sm font-medium">Domain Khusus (sekolah.sch.id)</span>
+                                    </li>
+                                    <li className="flex items-start gap-3 text-slate-600">
+                                        <CheckCircle className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                                        <span className="text-sm font-medium">White Label (Logo Sekolah)</span>
+                                    </li>
+                                    <li className="flex items-start gap-3 text-slate-600">
+                                        <CheckCircle className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                                        <span className="text-sm font-medium">Dedicated Server</span>
+                                    </li>
+                                    <li className="flex items-start gap-3 text-slate-600">
+                                        <CheckCircle className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
+                                        <span className="text-sm font-medium">Integrasi Dapodik (Opsional)</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <button className="w-full py-4 bg-slate-50 text-slate-700 font-bold border border-slate-200 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition-all">
+                                Kontak Sales
+                            </button>
+                        </motion.div>
+                    </div>
+                </div>
+            </section>
             <section id="about" className="py-20 overflow-hidden">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid lg:grid-cols-2 gap-16 items-center">
