@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Users, BookOpen, Clock, Calendar, TrendingUp, ArrowRight, Monitor, Edit3, Loader2, CheckCircle, Award, AlertTriangle, BarChart2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, BookOpen, TrendingUp, ArrowRight, Monitor, Edit3, Loader2, CheckCircle, Award, AlertTriangle, BarChart2 } from 'lucide-react';
 import api from '../services/api';
 import { useNavigate } from 'react-router-dom';
 

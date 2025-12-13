@@ -58,15 +58,23 @@ const ExamMonitorPage = () => {
         logs: []
     });
 
-    const fetchMonitorData = async () => {
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const fetchMonitorData = async (manual = false) => {
+        if (manual) setIsRefreshing(true);
         try {
             const response = await api.get(`/exams/${id}/monitor`);
             setData(response.data);
+            if (manual) {
+                // showToast('Data berhasil diperbarui', 'success'); // Optional: lighter toast
+                await showSuccess('Berhasil', 'Data monitoring berhasil diperbarui');
+            }
         } catch (error) {
             console.error('Gagal mengambil data monitoring', error);
             showToast('Gagal mengambil data monitoring', 'error');
         } finally {
             setLoading(false);
+            if (manual) setIsRefreshing(false);
         }
     };
 
@@ -197,8 +205,13 @@ const ExamMonitorPage = () => {
                             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                             Live Update
                         </span>
-                        <button onClick={fetchMonitorData} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors" title="Refresh Data">
-                            <RefreshCw className="w-5 h-5" />
+                        <button
+                            onClick={() => fetchMonitorData(true)}
+                            disabled={isRefreshing}
+                            className={`p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors ${isRefreshing ? 'cursor-not-allowed opacity-70' : ''}`}
+                            title="Refresh Data"
+                        >
+                            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`} />
                         </button>
                     </div>
                 </div>

@@ -60,12 +60,12 @@ const LoginPage: React.FC = () => {
         <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-blue-600 to-indigo-700 p-12 flex-col justify-between text-white relative">
           <div>
             <div className="flex items-center gap-3 mb-6">
-              <img src="/logo.jpg" alt="Logo" className="w-12 h-12 rounded-lg object-contain bg-white shadow-md" />
+              <img src="/logo.png" alt="Logo" className="w-12 h-12 rounded-lg object-contain bg-white shadow-md" />
               <h1 className="text-2xl font-bold tracking-wide">SIBENTIK EXAM</h1>
             </div>
             <h2 className="text-3xl font-bold mb-4">Selamat Datang di Sistem Ujian Online</h2>
             <p className="text-blue-100 leading-relaxed">
-              Platform ujian berbasis komputer yang aman, cepat, dan terpercaya untuk mendukung evaluasi pembelajaran siswa.
+              Platform ujian modern yang dapat diakses melalui komputer maupun ponsel pintar (HP), dilengkapi fitur canggih anti-curang untuk menjaga integritas ujian, serta mendukung digitalisasi sekolah secara menyeluruh.
             </p>
           </div>
           <div className="text-sm text-blue-200">

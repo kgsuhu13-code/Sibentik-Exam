@@ -7,8 +7,7 @@ import {
     AlertTriangle,
     Clock,
     ArrowRight,
-    MonitorPlay,
-    Search
+    MonitorPlay
 } from 'lucide-react';
 
 interface Exam {

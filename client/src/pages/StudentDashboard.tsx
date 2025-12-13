@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
+import StudentSidebar from '../components/StudentSidebar';
 import {
     BookOpen,
     Clock,
@@ -13,21 +14,21 @@ import {
     PlayCircle,
     AlertCircle,
     X,
-    KeyRound,
-    Loader2,
     Award,
     Sparkles,
     LayoutDashboard,
     ListTodo,
     History,
-    LogOut
+    LogOut,
+    CheckCircle,
+    Menu
 } from 'lucide-react';
 
 const StudentDashboard = () => {
     const { user, logout } = useAuth();
     const { showToast } = useToast();
     const navigate = useNavigate();
-    const location = useLocation();
+
     const [profile, setProfile] = useState<any>(null);
     const [stats, setStats] = useState({
         totalExams: 0,
@@ -38,6 +39,7 @@ const StudentDashboard = () => {
     const [ongoingExams, setOngoingExams] = useState<any[]>([]);
     const [recentHistory, setRecentHistory] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // State untuk Modal Token
     const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
@@ -69,7 +71,6 @@ const StudentDashboard = () => {
                 const totalScore = publishedHistory.reduce((acc: number, curr: any) => acc + (Number(curr.score) || 0), 0);
                 const avgScore = publishedHistory.length > 0 ? Math.round(totalScore / publishedHistory.length) : 0;
 
-                // Ambil history terakhir (asumsi array terurut atau sort dulu)
                 // Ambil history terakhir (asumsi array terurut atau sort dulu)
                 const sortedHistory = [...history].sort((a: any, b: any) => {
                     const dateA = new Date(a.finished_at || a.end_time || 0).getTime();
@@ -136,12 +137,6 @@ const StudentDashboard = () => {
 
     const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-    // ... existing token modal state ...
-
-    // ... existing useEffect ...
-
-    // ... existing handleStartClick ...
-
     const handleLogoutClick = () => {
         setIsLogoutModalOpen(true);
     };
@@ -185,213 +180,243 @@ const StudentDashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-white font-sans flex flex-col relative overflow-hidden pb-20">
+        <div className="min-h-screen font-sans bg-white md:bg-slate-50 flex flex-col relative overflow-hidden pb-20 md:pb-0 md:overflow-auto">
 
-            {/* --- TOP SECTION (WHITE ~20%) --- */}
-            <div className="px-6 pt-8 pb-12 bg-white relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-slate-50 border-2 border-slate-100 p-0.5 shadow-sm shrink-0">
-                            <div className="w-full h-full bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold text-xl">
-                                {profile?.full_name?.charAt(0).toUpperCase()}
-                            </div>
+
+
+            {/* ========================================= */}
+            {/* UNIFIED RESPONSIVE LAYOUT                 */}
+            {/* ========================================= */}
+            <div className="min-h-screen bg-slate-50 flex">
+                <StudentSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+
+                <div className="flex-1 p-6 md:p-10 w-full overflow-y-auto h-screen">
+                    {/* Mobile Header Toggle */}
+                    <div className="md:hidden flex items-center justify-between mb-8 sticky top-0 z-30 bg-slate-50/90 backdrop-blur-sm py-2">
+                        <div className="flex items-center gap-3">
+                            <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white border border-slate-200" />
+                            <span className="text-lg font-extrabold text-slate-800 tracking-tight">Sibentik <span className="text-blue-600">Exam</span></span>
                         </div>
+                        <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
+                            <Menu className="w-6 h-6" />
+                        </button>
+                    </div>
+
+                    {/* 1. Desktop Header (Modified for Mobile) */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
                         <div>
-                            <p className="text-slate-500 text-sm font-medium mb-0.5">Selamat Datang,</p>
-                            <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight leading-none">
-                                {profile?.full_name?.split(' ')[0] || user?.username} 👋
-                            </h1>
+                            <h1 className="text-2xl md:text-3xl font-extrabold text-slate-800 tracking-tight">Dashboard Siswa</h1>
+                            <p className="text-slate-500 mt-1 text-sm md:text-base">Selamat datang kembali, <span className="font-bold text-blue-600">{profile?.full_name || user?.username}</span> 👋</p>
+                        </div>
+                        <div className="flex items-center gap-3 bg-white p-2 rounded-xl shadow-sm border border-slate-200 px-4 w-fit">
+                            <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
+                                <Calendar className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Hari ini</span>
+                                <span className="text-sm font-bold text-slate-700">{new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+                            </div>
                         </div>
                     </div>
-                    {/* Logout Button */}
-                    <button
-                        onClick={handleLogoutClick}
-                        className="w-10 h-10 rounded-full bg-slate-50 text-slate-400 border border-slate-100 flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-all active:scale-95"
-                    >
-                        <LogOut className="w-5 h-5 ml-0.5" />
-                    </button>
-                </div>
 
-                {/* Score Summary Bubble */}
-                <div className="flex items-center gap-3">
-                    <div className="px-4 py-2 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3 shadow-sm w-full">
-                        <div className={`p-2 rounded-xl ${stats.averageScore >= 80 ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
-                            }`}>
-                            <Award className="w-5 h-5" />
+                    {/* 2. Stats Row */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-8">
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+                            <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+                                <ListTodo className="w-5 h-5 md:w-6 md:h-6" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase truncate">Total Ujian</p>
+                                <p className="text-xl md:text-2xl font-extrabold text-slate-800">{stats.totalExams}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Rata-rata Nilai</p>
-                            <p className="text-lg font-extrabold text-slate-800">{stats.averageScore}</p>
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+                            <div className="w-10 h-10 md:w-12 md:h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
+                                <CheckCircle className="w-5 h-5 md:w-6 md:h-6" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase truncate">Selesai</p>
+                                <p className="text-xl md:text-2xl font-extrabold text-slate-800">{stats.completedExams}</p>
+                            </div>
                         </div>
-                        <div className="ml-auto">
-                            <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-100">
-                                {stats.completedExams} Selesai
-                            </span>
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+                            <div className="w-10 h-10 md:w-12 md:h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center shrink-0">
+                                <Calendar className="w-5 h-5 md:w-6 md:h-6" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase truncate">Akan Datang</p>
+                                <p className="text-xl md:text-2xl font-extrabold text-slate-800">{stats.upcomingExams}</p>
+                            </div>
+                        </div>
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 hover:shadow-md transition-shadow">
+                            <div className="w-10 h-10 md:w-12 md:h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center shrink-0">
+                                <Award className="w-5 h-5 md:w-6 md:h-6" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-slate-400 text-[10px] md:text-xs font-bold uppercase truncate">Rata-rata</p>
+                                <p className="text-xl md:text-2xl font-extrabold text-slate-800">{stats.averageScore}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* --- BOTTOM SECTION (BLUE GRADIENT ~80%) --- */}
-            <div className="flex-1 bg-gradient-to-b from-blue-600 to-indigo-700 rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(37,99,235,0.2)] relative z-0 px-6 pt-8 pb-24 -mt-6">
+                    {/* 3. Main Content Grid */}
+                    <div className="block md:grid md:grid-cols-12 gap-8">
+                        {/* Left Col (8) */}
+                        <div className="md:col-span-8 space-y-8">
 
-                {/* Decoration Circles */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+                            {/* Active Exam Section */}
+                            <div className="bg-white rounded-3xl shadow-lg shadow-blue-900/5 border border-slate-200 overflow-hidden relative">
+                                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-5 md:px-8 md:py-6 text-white flex justify-between items-center">
+                                    <div>
+                                        <h2 className="text-lg md:text-xl font-bold flex items-center gap-2">
+                                            <Sparkles className="w-5 h-5 text-yellow-300" />
+                                            Sedang Berlangsung
+                                        </h2>
+                                        <p className="text-blue-100 text-xs md:text-sm mt-1 opacity-90 hidden sm:block">Jangan lupa kerjakan ujianmu sebelum waktu habis!</p>
+                                    </div>
+                                    <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                                        <Clock className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                                    </div>
+                                </div>
 
-                <div className="relative z-10 space-y-6">
-
-                    {/* 1. ONGOING EXAM CARD (Featured) */}
-                    {ongoingExams.length > 0 ? (
-                        <div className="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-3xl text-white relative overflow-hidden group">
-                            <div className="absolute top-4 right-4 animate-pulse">
-                                <span className="relative flex h-3 w-3">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                                </span>
+                                <div className="p-6 md:p-8">
+                                    {ongoingExams.length > 0 ? (
+                                        <div className="flex flex-col sm:flex-row items-center gap-6">
+                                            <div className="w-full sm:w-24 h-24 bg-blue-50 rounded-2xl flex items-center justify-center shrink-0 border border-blue-100">
+                                                <div className="text-center">
+                                                    <span className="block text-2xl font-extrabold text-blue-600">{ongoingExams[0].duration}</span>
+                                                    <span className="text-[10px] font-bold text-blue-400 uppercase">Menit</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 text-center sm:text-left w-full">
+                                                <div className="flex justify-center sm:justify-start gap-2 mb-2">
+                                                    <span className="px-2.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full uppercase tracking-wide">
+                                                        Wajib
+                                                    </span>
+                                                    <span className="px-2.5 py-0.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-full uppercase tracking-wide">
+                                                        {ongoingExams[0].subject}
+                                                    </span>
+                                                </div>
+                                                <h3 className="text-xl md:text-2xl font-bold text-slate-800 mb-1 line-clamp-2">{ongoingExams[0].title}</h3>
+                                                <p className="text-slate-500 text-sm hidden sm:block">Pastikan koneksi internet lancar sebelum memulai.</p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleStartClick(ongoingExams[0])}
+                                                className="w-full sm:w-auto px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-200 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2"
+                                            >
+                                                <PlayCircle className="w-5 h-5" />
+                                                {ongoingExams[0].student_status === 'ongoing' || ongoingExams[0].student_start_time ? 'Lanjut' : 'Mulai'}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8">
+                                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+                                                <CheckCircle className="w-8 h-8" />
+                                            </div>
+                                            <h3 className="text-lg font-bold text-slate-700">Tidak ada ujian aktif</h3>
+                                            <p className="text-slate-500 text-sm">Belum ada ujian yang perlu dikerjakan saat ini.</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
-                            <div className="mb-4">
-                                <span className="inline-block px-3 py-1 bg-white/20 rounded-full text-[10px] font-extrabold uppercase tracking-wider text-blue-50 mb-2">
-                                    Sedang Berlangsung
-                                </span>
-                                <h2 className="text-xl font-bold leading-tight mb-1">{ongoingExams[0].title}</h2>
-                                <p className="text-blue-100 text-sm">{ongoingExams[0].subject}</p>
+                            {/* Recent History Table */}
+                            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                                <div className="px-6 py-5 md:px-8 md:py-6 border-b border-slate-100 flex justify-between items-center">
+                                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                        <History className="w-5 h-5 text-slate-400" />
+                                        Riwayat
+                                    </h3>
+                                    <button onClick={() => navigate('/student-history')} className="text-sm font-bold text-blue-600 hover:text-blue-700 hover:underline">
+                                        Lihat Semua
+                                    </button>
+                                </div>
+                                {/* Responsive History List */}
+                                <div className="p-0">
+                                    {recentHistory ? (
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-4 hover:bg-slate-50 transition-colors">
+                                            <div className="flex items-start gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shrink-0">
+                                                    <CheckCircle className="w-6 h-6" />
+                                                </div>
+                                                <div>
+                                                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">
+                                                            {recentHistory.subject}
+                                                        </span>
+                                                        <span className="text-xs text-slate-400">
+                                                            {new Date(recentHistory.finished_at || recentHistory.end_time).toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })}
+                                                        </span>
+                                                    </div>
+                                                    <h4 className="font-bold text-slate-800 line-clamp-1">{recentHistory.title || recentHistory.exam_title}</h4>
+                                                    <p className="text-xs text-slate-500 mt-0.5 md:hidden">Selesai dikerjakan</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between md:justify-end gap-4 pl-[4rem] md:pl-0">
+                                                <div className="text-left md:text-right">
+                                                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-0.5">Nilai Akhir</p>
+                                                    {recentHistory.is_published ? (
+                                                        <span className={`text-xl font-black ${recentHistory.score >= 75 ? 'text-emerald-600' : 'text-orange-600'}`}>
+                                                            {recentHistory.score}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-400 text-sm italic font-medium">Menunggu</span>
+                                                    )}
+                                                </div>
+                                                <div className="hidden md:block w-px h-10 bg-slate-100 mx-2"></div>
+                                                <div className="md:hidden">
+                                                    {/* Spacer or mobile specific action if needed */}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="p-8 text-center text-slate-400 text-sm flex flex-col items-center">
+                                            <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3 text-slate-300">
+                                                <History className="w-6 h-6" />
+                                            </div>
+                                            <p>Belum ada riwayat ujian.</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
-                            <div className="flex items-center gap-4 text-xs font-medium text-blue-100 mb-5 bg-black/10 p-2 rounded-xl w-fit">
-                                <span className="flex items-center gap-1.5">
-                                    <Clock className="w-3.5 h-3.5" /> {ongoingExams[0].duration} Menit
-                                </span>
-                            </div>
-
-                            <button
-                                onClick={() => handleStartClick(ongoingExams[0])}
-                                className="w-full bg-white text-blue-700 py-3.5 rounded-2xl font-bold shadow-lg shadow-blue-900/20 active:scale-95 transition-transform flex items-center justify-center gap-2"
-                            >
-                                <PlayCircle className="w-5 h-5 fill-current" />
-                                Kerjakan Sekarang
-                            </button>
                         </div>
-                    ) : (
-                        <div className="bg-white/10 backdrop-blur-md border border-white/20 p-6 rounded-3xl text-white text-center py-8">
-                            <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 text-yellow-300">
-                                <Sparkles className="w-8 h-8 fill-current" />
-                            </div>
-                            <h3 className="text-lg font-bold mb-1">Tidak Ada Ujian Aktif</h3>
-                            <p className="text-blue-100 text-sm">Istirahatlah sejenak, kamu hebat!</p>
-                        </div>
-                    )}
 
-                    {/* 2. RECENT HISTORY (WIDGET) */}
-                    {recentHistory && (
-                        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4">
-                            <div className="w-12 h-12 bg-emerald-500/20 text-emerald-300 rounded-xl flex items-center justify-center text-lg font-bold border border-emerald-500/30">
-                                {recentHistory.is_published ? recentHistory.score : <Clock className="w-6 h-6" />}
+                        {/* Right Col (4) */}
+                        <div className="md:col-span-4 space-y-6 mt-8 md:mt-0">
+                            {/* Quick Menu Widget */}
+                            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
+                                <h3 className="font-bold text-slate-800 mb-4">Menu Cepat</h3>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button onClick={() => navigate('/student-exams')} className="p-4 bg-blue-50 hover:bg-blue-100 rounded-xl text-blue-700 font-bold text-sm transition-colors flex flex-col items-center gap-2">
+                                        <ListTodo className="w-6 h-6" />
+                                        Jadwal Ujian
+                                    </button>
+                                    <button onClick={() => navigate('/student-history')} className="p-4 bg-emerald-50 hover:bg-emerald-100 rounded-xl text-emerald-700 font-bold text-sm transition-colors flex flex-col items-center gap-2">
+                                        <Award className="w-6 h-6" />
+                                        Lihat Nilai
+                                    </button>
+                                    <button onClick={handleLogoutClick} className="col-span-2 p-3 bg-slate-50 hover:bg-red-50 hover:text-red-600 rounded-xl text-slate-500 font-medium text-sm transition-colors flex items-center justify-center gap-2">
+                                        <LogOut className="w-4 h-4" />
+                                        Keluar Aplikasi
+                                    </button>
+                                </div>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-blue-200 text-xs mb-0.5">
-                                    Selesai: {(() => {
-                                        const d = new Date(recentHistory.finished_at || recentHistory.end_time || Date.now());
-                                        return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
-                                    })()}
+
+                            {/* Motivation Card */}
+                            <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl shadow-lg p-6 text-white relative overflow-hidden hidden md:block">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+                                <h3 className="font-bold text-lg mb-2 relative z-10">Tetap Semangat! 🚀</h3>
+                                <p className="text-indigo-100 text-sm relative z-10 leading-relaxed">
+                                    "Pendidikan adalah senjata paling mematikan di dunia, karena dengan pendidikan, Anda dapat mengubah dunia."
                                 </p>
-                                <h4 className="text-white font-bold text-sm truncate">{recentHistory.title || 'Ujian Sebelumnya'}</h4>
+                                <div className="mt-4 pt-4 border-t border-white/10 text-xs text-indigo-200">
+                                    – Nelson Mandela
+                                </div>
                             </div>
-                            <button onClick={() => navigate('/student-history')} className="p-2 bg-white/10 rounded-lg text-white/70 hover:bg-white/20 hover:text-white">
-                                <ArrowRight className="w-4 h-4" />
-                            </button>
-                        </div>
-                    )}
-
-                    {/* 3. MAIN MENU GRID */}
-                    <div>
-                        <h3 className="text-blue-100 text-sm font-bold uppercase tracking-wider mb-4 pl-1 flex items-center gap-2">
-                            Menu Utama <div className="h-px bg-blue-400/30 flex-1"></div>
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4">
-                            <button
-                                onClick={() => navigate('/student-exams')}
-                                className="bg-white p-5 rounded-3xl shadow-lg border border-white/50 flex flex-col items-center text-center gap-3 active:scale-95 transition-all"
-                            >
-                                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
-                                    <Calendar className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <span className="block text-slate-800 font-bold text-sm">Jadwal</span>
-                                    <span className="block text-slate-400 text-xs mt-0.5">{stats.upcomingExams} Ujian</span>
-                                </div>
-                            </button>
-
-                            <button
-                                onClick={() => navigate('/student-history')}
-                                className="bg-white p-5 rounded-3xl shadow-lg border border-white/50 flex flex-col items-center text-center gap-3 active:scale-95 transition-all"
-                            >
-                                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center">
-                                    <Award className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <span className="block text-slate-800 font-bold text-sm">Nilai</span>
-                                    <span className="block text-slate-400 text-xs mt-0.5">Riwayat</span>
-                                </div>
-                            </button>
-
-                            {/* Featured Placeholder 1 */}
-                            <button
-                                className="bg-white/5 p-5 rounded-3xl border border-white/10 flex flex-col items-center text-center gap-3 active:scale-95 transition-all"
-                            >
-                                <div className="w-12 h-12 bg-white/10 text-white rounded-2xl flex items-center justify-center">
-                                    <BookOpen className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <span className="block text-white font-bold text-sm">Materi</span>
-                                    <span className="block text-blue-200 text-xs mt-0.5">Segera</span>
-                                </div>
-                            </button>
-
-                            {/* Featured Placeholder 2 */}
-                            <button
-                                className="bg-white/5 p-5 rounded-3xl border border-white/10 flex flex-col items-center text-center gap-3 active:scale-95 transition-all"
-                            >
-                                <div className="w-12 h-12 bg-white/10 text-white rounded-2xl flex items-center justify-center">
-                                    <TrendingUp className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <span className="block text-white font-bold text-sm">Analisis</span>
-                                    <span className="block text-blue-200 text-xs mt-0.5">Segera</span>
-                                </div>
-                            </button>
                         </div>
                     </div>
-
-                </div>
-            </div>
-
-            {/* MOBILE BOTTOM NAVIGATION BAR */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-50 pb-safe">
-                <div className="flex justify-around items-center h-16">
-                    <button
-                        onClick={() => navigate('/student-dashboard')}
-                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 text-blue-600`}
-                    >
-                        <LayoutDashboard className="w-6 h-6 fill-current" strokeWidth={2.5} />
-                        <span className="text-[10px] font-medium">Dashboard</span>
-                    </button>
-
-                    <button
-                        onClick={() => navigate('/student-exams')}
-                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 text-slate-400 hover:text-slate-600`}
-                    >
-                        <ListTodo className="w-6 h-6" strokeWidth={2} />
-                        <span className="text-[10px] font-medium">Ujian</span>
-                    </button>
-
-                    <button
-                        onClick={() => navigate('/student-history')}
-                        className={`flex flex-col items-center justify-center w-full h-full space-y-1 text-slate-400 hover:text-slate-600`}
-                    >
-                        <History className="w-6 h-6" strokeWidth={2} />
-                        <span className="text-[10px] font-medium">Riwayat</span>
-                    </button>
                 </div>
             </div>
 

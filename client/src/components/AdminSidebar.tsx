@@ -26,9 +26,7 @@ const AdminSidebar = () => {
         <div className="h-screen w-64 bg-slate-900 text-white flex flex-col fixed left-0 top-0 shadow-xl z-50">
             {/* Logo Area - Admin Special Color */}
             <div className="p-6 flex items-center gap-3 border-b border-slate-800 bg-slate-950">
-                <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center font-bold text-lg">
-                    A
-                </div>
+                <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-slate-200 p-1" />
                 <span className="text-xl font-bold tracking-wide">Admin Panel</span>
             </div>
 

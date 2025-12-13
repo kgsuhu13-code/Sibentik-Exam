@@ -29,7 +29,7 @@ const Sidebar = () => {
         <div className="h-screen w-64 bg-slate-900 text-white flex flex-col fixed left-0 top-0 shadow-xl z-50">
             {/* Logo Area */}
             <div className="p-6 flex items-center gap-3 border-b border-slate-800">
-                <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white" />
+                <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white" />
                 <span className="text-xl font-bold tracking-wide">Sibentik Exam</span>
             </div>
 

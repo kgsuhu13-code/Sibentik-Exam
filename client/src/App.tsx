@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import LoginPage from './pages/LoginPages';
+import LandingPage from './pages/LandingPage';
 import TeacherLayout from './components/TeacherLayout';
 import TeacherDashboard from './pages/TeacherDashboard';
 import QuestionBankPage from './pages/QuestionBankPage';
@@ -39,6 +40,10 @@ function App() {
             <ToastProvider>
                 <Router>
                     <Routes>
+                        {/* Halaman Landing Page (Public) */}
+                        <Route path="/" element={<LandingPage />} />
+
+                        {/* Halaman Login */}
                         <Route path="/login" element={<LoginPage />} />
 
                         {/* Rute Guru (Protected) */}
@@ -89,8 +94,8 @@ function App() {
                             </Route>
                         </Route>
 
-                        {/* Default redirect ke login */}
-                        <Route path="*" element={<Navigate to="/login" />} />
+                        {/* Default redirect ke Landing Page */}
+                        <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                 </Router>
             </ToastProvider>
