@@ -1,5 +1,8 @@
 import type { Request, Response } from 'express';
 import pool from '../config/db.js';
+import redis from '../config/redis.js';
+
+const DASHBOARD_CACHE_TTL = 300; // 5 minutes (300 seconds)
 
 export const getTeacherDashboardStats = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -8,6 +11,14 @@ export const getTeacherDashboardStats = async (req: Request, res: Response): Pro
 
         if (!teacherId || !schoolId) {
             res.status(401).json({ message: 'Unauthorized or No School Assigned' });
+            return;
+        }
+
+        const cacheKey = `dashboard:teacher:${teacherId}`;
+        const cachedData = await redis.get(cacheKey);
+
+        if (cachedData) {
+            res.json(JSON.parse(cachedData));
             return;
         }
 
@@ -126,7 +137,7 @@ export const getTeacherDashboardStats = async (req: Request, res: Response): Pro
                 (SELECT COUNT(*) FROM question_banks WHERE created_by = $1) as total_banks
         `, [teacherId, schoolId]);
 
-        res.json({
+        const responseData = {
             latestExamAnalysis: {
                 exam: latestExam,
                 topStudents
@@ -136,7 +147,11 @@ export const getTeacherDashboardStats = async (req: Request, res: Response): Pro
             gradingQueue: gradingQueueQuery.rows,
             recentPerformance: recentPerformanceQuery.rows,
             stats: statsQuery.rows[0]
-        });
+        };
+
+        await redis.setex(cacheKey, DASHBOARD_CACHE_TTL, JSON.stringify(responseData));
+
+        res.json(responseData);
 
     } catch (error) {
         console.error('Error fetching dashboard stats:', error);

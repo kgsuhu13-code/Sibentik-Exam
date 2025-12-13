@@ -1,5 +1,5 @@
 
-import pool from '../config/db';
+import pool from '../config/db.js';
 
 const alterPointsColumn = async () => {
     try {

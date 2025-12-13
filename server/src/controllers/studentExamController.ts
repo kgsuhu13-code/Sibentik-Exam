@@ -1,5 +1,35 @@
 import type { Request, Response } from 'express';
 import pool from '../config/db.js';
+import redis from '../config/redis.js';
+
+const CACHE_TTL = 3600; // 1 hour
+
+// Helper to clear pattern (Promisified to wait for completion)
+const clearCache = (pattern: string) => {
+    return new Promise((resolve, reject) => {
+        const stream = redis.scanStream({
+            match: pattern,
+            count: 100
+        });
+
+        stream.on('data', (keys: string[]) => {
+            if (keys.length) {
+                const pipeline = redis.pipeline();
+                keys.forEach((key: any) => pipeline.del(key));
+                pipeline.exec();
+            }
+        });
+
+        stream.on('end', () => {
+            resolve(true);
+        });
+
+        stream.on('error', (err) => {
+            console.error('Redis scan error:', err);
+            reject(err);
+        });
+    });
+};
 
 // 10. Ambil Soal untuk Ujian (Siswa) - Tanpa Kunci Jawaban
 export const getExamQuestionsForStudent = async (req: Request, res: Response): Promise<void> => {
@@ -139,16 +169,26 @@ export const getExamQuestionsForStudent = async (req: Request, res: Response): P
             }
         }
 
-        // 3. Ambil Soal-soal
-        let query = 'SELECT id, type, content, options, points FROM questions WHERE bank_id = $1';
-        if (exam.is_random_question) {
-            query += ' ORDER BY RANDOM()';
+        // 3. Ambil Soal-soal (Optimized with Redis)
+        let questions: any[] = [];
+        const cacheKey = `questions:${exam.bank_id}`;
+
+        const cachedQuestions = await redis.get(cacheKey);
+
+        if (cachedQuestions) {
+            questions = JSON.parse(cachedQuestions);
         } else {
-            query += ' ORDER BY id ASC';
+            // Fetch clean list from DB
+            const qRes = await pool.query('SELECT id, type, content, options, points FROM questions WHERE bank_id = $1 ORDER BY id ASC', [exam.bank_id]);
+            questions = qRes.rows;
+            // Set cache
+            await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(questions));
         }
 
-        const questionsResult = await pool.query(query, [exam.bank_id]);
-        let questions = questionsResult.rows;
+        // Handle Randomization in JS if needed
+        if (exam.is_random_question) {
+            questions = questions.sort(() => Math.random() - 0.5);
+        }
 
         // 4. Sanitasi & Randomize Jawaban
         questions = questions.map(q => {
@@ -271,6 +311,13 @@ export const submitExam = async (req: Request, res: Response): Promise<void> => 
             );
         }
 
+        // Invalidate caches if finished
+        if (finished) {
+            await redis.del(`student:history:${studentId}`);
+            // Fix: Also invalidate the exam list for this student so dashboard updates immediately
+            await clearCache(`exams:list:*:*:student:${studentId}`);
+        }
+
         res.json({ message: 'Jawaban berhasil disimpan' });
 
     } catch (error) {
@@ -284,6 +331,14 @@ export const getStudentHistory = async (req: Request, res: Response): Promise<vo
     const { studentId } = req.params;
 
     try {
+        const cacheKey = `student:history:${studentId}`;
+        const cached = await redis.get(cacheKey);
+
+        if (cached) {
+            res.json(JSON.parse(cached));
+            return;
+        }
+
         // 1. Ambil sesi ujian yang sudah selesai
         const sessionsResult = await pool.query(`
             SELECT es.*, e.title as exam_title, e.is_published, e.bank_id, qb.subject, qb.class_level
@@ -335,6 +390,8 @@ export const getStudentHistory = async (req: Request, res: Response): Promise<vo
             });
         }
 
+        await redis.setex(cacheKey, 300, JSON.stringify(history));
+
         res.json(history);
 
     } catch (error) {
@@ -369,15 +426,26 @@ export const getExamReview = async (req: Request, res: Response): Promise<void> 
         }
         const session = sessionResult.rows[0];
 
-        // 2. Ambil Soal Lengkap (termasuk kunci jawaban)
+        // 2. Ambil Soal Lengkap (Optimized with Redis)
         console.log(`[DEBUG] Fetching questions for bank_id: ${session.bank_id}`);
-        const questionsResult = await pool.query(`
-            SELECT * FROM questions WHERE bank_id = $1 ORDER BY id ASC
-        `, [session.bank_id]);
 
-        console.log(`[DEBUG] Questions found: ${questionsResult.rows.length}`);
+        let rawQuestions: any[] = [];
+        const cacheKey = `questions:${session.bank_id}`;
+        const cached = await redis.get(cacheKey);
 
-        const questions = questionsResult.rows.map(q => {
+        if (cached) {
+            rawQuestions = JSON.parse(cached);
+        } else {
+            const questionsResult = await pool.query(`
+                SELECT * FROM questions WHERE bank_id = $1 ORDER BY id ASC
+            `, [session.bank_id]);
+            rawQuestions = questionsResult.rows;
+            await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(rawQuestions));
+        }
+
+        console.log(`[DEBUG] Questions found: ${rawQuestions.length}`);
+
+        const questions = rawQuestions.map(q => {
             let options = q.options;
 
             // 1. Parse JSON string if needed

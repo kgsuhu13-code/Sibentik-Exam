@@ -1,6 +1,24 @@
 // src/controllers/questionController.ts
 import type { Request, Response } from 'express';
 import pool from '../config/db.js';
+import redis from '../config/redis.js';
+
+const CACHE_TTL = 3600; // 1 hour
+
+// Helper to clear pattern
+const clearCache = async (pattern: string) => {
+    const stream = redis.scanStream({
+        match: pattern,
+        count: 100
+    });
+    stream.on('data', (keys: string[]) => {
+        if (keys.length) {
+            const pipeline = redis.pipeline();
+            keys.forEach((key: any) => pipeline.del(key));
+            pipeline.exec();
+        }
+    });
+};
 
 // Helper: Get User ID from Request (assuming auth middleware populates req.user)
 const getUserId = (req: Request): number | null => {
@@ -19,7 +37,15 @@ export const getAllQuestionBanks = async (req: Request, res: Response): Promise<
     const userId = getUserId(req);
     const scope = req.query.scope as string || 'private'; // 'private' | 'public'
 
+    const cacheKey = `banks:${userId}:${scope}`;
+
     try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+            res.json(JSON.parse(cached));
+            return;
+        }
+
         let query = `
             SELECT qb.*, u.full_name as author_name, s.name as school_name,
             (SELECT COUNT(*) FROM questions WHERE bank_id = qb.id) as total_questions,
@@ -49,6 +75,9 @@ export const getAllQuestionBanks = async (req: Request, res: Response): Promise<
         query += ` ORDER BY qb.created_at DESC`;
 
         const result = await pool.query(query, params);
+
+        await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result.rows));
+
         res.json(result.rows);
     } catch (error) {
         console.error(error);
@@ -67,6 +96,10 @@ export const createQuestionBank = async (req: Request, res: Response): Promise<v
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
             [title, subject, class_level, created_by, is_random_question || false, is_random_answer || false, is_public || false, description || '']
         );
+
+        // Invalidate lists
+        await clearCache('banks:*');
+
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error(error);
@@ -94,6 +127,11 @@ export const deleteQuestionBank = async (req: Request, res: Response): Promise<v
         }
 
         await pool.query('DELETE FROM question_banks WHERE id = $1', [id]);
+
+        await clearCache('banks:*');
+        await clearCache(`bank:${id}`);
+        await clearCache(`questions:${id}`);
+
         res.json({ message: 'Bank soal berhasil dihapus' });
     } catch (error) {
         console.error(error);
@@ -107,7 +145,18 @@ export const deleteQuestionBank = async (req: Request, res: Response): Promise<v
 export const getQuestionsByBankId = async (req: Request, res: Response): Promise<void> => {
     const { bankId } = req.params;
     try {
+        const cacheKey = `questions:${bankId}`;
+        const cached = await redis.get(cacheKey);
+
+        if (cached) {
+            res.json(JSON.parse(cached));
+            return;
+        }
+
         const result = await pool.query('SELECT * FROM questions WHERE bank_id = $1 ORDER BY id ASC', [bankId]);
+
+        await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result.rows));
+
         res.json(result.rows);
     } catch (error) {
         console.error(error);
@@ -135,6 +184,11 @@ export const addQuestion = async (req: Request, res: Response): Promise<void> =>
              VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
             [bank_id, type, content, JSON.stringify(options), correct_answer, points]
         );
+
+        await clearCache(`questions:${bank_id}`);
+        await clearCache(`bank:${bank_id}`);
+        await clearCache('banks:*');
+
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error(error);
@@ -166,7 +220,17 @@ export const deleteQuestion = async (req: Request, res: Response): Promise<void>
             return;
         }
 
+        const qResult = await pool.query('SELECT bank_id FROM questions WHERE id = $1', [id]);
+        const bankId = qResult.rows[0]?.bank_id;
+
         await pool.query('DELETE FROM questions WHERE id = $1', [id]);
+
+        if (bankId) {
+            await clearCache(`questions:${bankId}`);
+            await clearCache(`bank:${bankId}`);
+            await clearCache('banks:*');
+        }
+
         res.json({ message: 'Soal berhasil dihapus' });
     } catch (error) {
         console.error(error);
@@ -202,8 +266,19 @@ export const deleteQuestionsBulk = async (req: Request, res: Response): Promise<
             return;
         }
 
+        // Ambil bank_ids yang terdampak sebelum delete untuk invalidasi
+        const bankCheck = await pool.query(`SELECT DISTINCT bank_id FROM questions WHERE id = ANY($1)`, [ids]);
+        const bankIds = bankCheck.rows.map(r => r.bank_id);
+
         // 2. Eksekusi Hapus
         await pool.query('DELETE FROM questions WHERE id = ANY($1)', [ids]);
+
+        // Invalidate Caches
+        for (const bid of bankIds) {
+            await clearCache(`questions:${bid}`);
+            await clearCache(`bank:${bid}`);
+        }
+        await clearCache('banks:*');
 
         res.json({ message: `Berhasil menghapus ${ids.length} soal` });
 
@@ -217,6 +292,14 @@ export const deleteQuestionsBulk = async (req: Request, res: Response): Promise<
 export const getQuestionBankById = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     try {
+        const cacheKey = `bank:${id}`;
+        const cached = await redis.get(cacheKey);
+
+        if (cached) {
+            res.json(JSON.parse(cached));
+            return;
+        }
+
         const result = await pool.query(`
             SELECT qb.*, u.full_name as author_name 
             FROM question_banks qb
@@ -227,6 +310,9 @@ export const getQuestionBankById = async (req: Request, res: Response): Promise<
             res.status(404).json({ message: 'Bank soal tidak ditemukan' });
             return;
         }
+
+        await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result.rows[0]));
+
         res.json(result.rows[0]);
     } catch (error) {
         console.error(error);
@@ -265,7 +351,12 @@ export const updateQuestionBank = async (req: Request, res: Response): Promise<v
              WHERE id = $8 RETURNING *`,
             [title, subject, class_level, is_random_question, is_random_answer, is_public, description, id]
         );
-        res.json(result.rows[0]);
+        const updatedBank = result.rows[0];
+
+        await clearCache(`bank:${id}`);
+        await clearCache('banks:*');
+
+        res.json(updatedBank);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Gagal mengupdate bank soal' });
@@ -303,7 +394,18 @@ export const updateQuestion = async (req: Request, res: Response): Promise<void>
              WHERE id = $6 RETURNING *`,
             [type, content, JSON.stringify(options), correct_answer, points, id]
         );
-        res.json(result.rows[0]);
+        const updatedQuestion = result.rows[0];
+        const bankId = updatedQuestion.bank_id;
+
+        await clearCache(`questions:${bankId}`);
+        // Konten soal tidak mengubah count bank, tapi jika poin berubah mungkin berdampak? 
+        // Untuk aman, clear bank detail juga jika nanti ada total skor.
+        // Tapi saat ini bank detail cuma count, jadi mungkin tidak perlu `bank:${bankId}` 
+        // kecuali kita cache konten dalam summary (tsrd).
+        // Biarkan aman:
+        // await clearCache(`bank:${bankId}`); 
+
+        res.json(updatedQuestion);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Gagal mengupdate soal' });
@@ -347,6 +449,8 @@ export const duplicateQuestionBank = async (req: Request, res: Response): Promis
         }
 
         res.status(201).json({ message: 'Bank soal berhasil diduplikasi', new_id: newBankId });
+
+        await clearCache('banks:*');
 
     } catch (error) {
         console.error(error);

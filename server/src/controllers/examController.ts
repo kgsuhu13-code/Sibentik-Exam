@@ -1,5 +1,23 @@
 import type { Request, Response } from 'express';
 import pool from '../config/db.js';
+import redis from '../config/redis.js';
+
+const CACHE_TTL = 3600; // 1 hour
+
+// Helper to clear pattern
+const clearCache = async (pattern: string) => {
+    const stream = redis.scanStream({
+        match: pattern,
+        count: 100
+    });
+    stream.on('data', (keys: string[]) => {
+        if (keys.length) {
+            const pipeline = redis.pipeline();
+            keys.forEach((key: any) => pipeline.del(key));
+            pipeline.exec();
+        }
+    });
+};
 
 // Helper: Get User ID from Request
 const getUserId = (req: Request): number | null => {
@@ -16,6 +34,16 @@ export const getExams = async (req: Request, res: Response): Promise<void> => {
         const { studentId, scope } = req.query;
         const userId = getUserId(req);
         const schoolId = getUserSchoolId(req);
+
+        // Cache Key Logic
+        const roleKey = studentId ? `student:${studentId}` : `teacher:${userId}`;
+        const cacheKey = `exams:list:${schoolId}:${scope}:${roleKey}`;
+
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+            res.json(JSON.parse(cached));
+            return;
+        }
 
         let query = '';
         const params: any[] = [];
@@ -67,6 +95,9 @@ export const getExams = async (req: Request, res: Response): Promise<void> => {
         query += ` ORDER BY e.start_time DESC`;
 
         const result = await pool.query(query, params);
+
+        await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result.rows));
+
         res.json(result.rows);
     } catch (error) {
         console.error(error);
@@ -104,6 +135,10 @@ export const createExam = async (req: Request, res: Response): Promise<void> => 
             await pool.query(queryText, params);
         }
 
+        // Invalidate Exam Lists (For all users in school ideally, but for now clear all lists)
+        // Optimization: Could be specific `exams:list:${schoolId}:*` if accessible here
+        await clearCache('exams:list:*');
+
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error(error);
@@ -129,6 +164,9 @@ export const deleteExam = async (req: Request, res: Response): Promise<void> => 
         }
 
         await pool.query('DELETE FROM exams WHERE id = $1', [id]);
+
+        await clearCache('exams:list:*');
+
         res.json({ message: 'Jadwal ujian berhasil dihapus' });
     } catch (error) {
         console.error(error);
@@ -140,6 +178,14 @@ export const getExamGradesSummary = async (req: Request, res: Response): Promise
     const userId = getUserId(req);
 
     try {
+        const cacheKey = `grades:summary:${userId}`;
+        const cached = await redis.get(cacheKey);
+
+        if (cached) {
+            res.json(JSON.parse(cached));
+            return;
+        }
+
         const query = `
             SELECT 
                 e.id, 
@@ -173,6 +219,8 @@ export const getExamGradesSummary = async (req: Request, res: Response): Promise
             participant_count: Number(row.participant_count),
             finished_count: Number(row.finished_count)
         }));
+
+        await redis.setex(cacheKey, 300, JSON.stringify(formatted)); // Cache for 5 minutes
 
         res.json(formatted);
     } catch (error) {

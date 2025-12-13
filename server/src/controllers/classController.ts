@@ -1,5 +1,8 @@
 import type { Request, Response } from 'express';
 import pool from '../config/db.js';
+import redis from '../config/redis.js';
+
+const CACHE_TTL = 600; // 10 minutes
 
 export const getClasses = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -41,6 +44,14 @@ export const getStudentsByClass = async (req: Request, res: Response): Promise<v
             return;
         }
 
+        const cacheKey = `students:list:${schoolId}:${class_level || 'all'}:${q || 'none'}`;
+        const cached = await redis.get(cacheKey);
+
+        if (cached) {
+            res.json(JSON.parse(cached));
+            return;
+        }
+
         let query = `
             SELECT 
                 u.id, 
@@ -67,6 +78,8 @@ export const getStudentsByClass = async (req: Request, res: Response): Promise<v
         query += ` GROUP BY u.id ORDER BY u.class_level ASC, u.full_name ASC`;
 
         const result = await pool.query(query, params);
+
+        await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(result.rows));
 
         res.json(result.rows);
     } catch (error) {
