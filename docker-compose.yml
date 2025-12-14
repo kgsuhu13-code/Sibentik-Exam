@@ -1,43 +1,31 @@
-version: '3.8'
-
 services:
-  # 1. Service Redis (Lokal)
-  redis:
-    image: redis:alpine
-    container_name: cbt-redis
-    ports:
-      - "6379:6379"
-    networks:
-      - cbt-network
-
-  # 2. Service Backend (Express)
+  # 1. Service Backend
   backend:
-    build: ./server  # Arahkan ke folder backend
+    build: ./server
     container_name: cbt-backend
     ports:
-      - "8080:8080"   # Akses di localhost:8080
+      - "8080:8080"
+    # 👇 INI KUNCINYA: Baca semua rahasia (Redis, Neon, Gemini, JWT) dari file .env
+    env_file:
+      - ./server/.env
     environment:
       - PORT=8080
-      - REDIS_URL=redis://default:NrWB31ZRnJ5JnMX4YhV0rSWECMM4DwWu@redis-18330.c334.asia-southeast2-1.gce.cloud.redislabs.com:18330  # Connect ke service 'redis' di atas
-      # Masukkan URL Neon kamu di sini (Hardcode dulu untuk tes lokal gapapa, asal jangan push ke git)
-      - DATABASE_URL=postgresql://neondb_owner:npg_7pxEWlRH1hyU@ep-blue-dust-ahj1yrkv-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
-    depends_on:
-      - redis
+      # Kita HAPUS override REDIS_URL & DATABASE_URL di sini.
+      # Biarkan dia pakai nilai asli yang ada di dalam file .env
     networks:
       - cbt-network
 
-  # 3. Service Frontend (React + Nginx)
+  # 2. Service Frontend
   frontend:
-    build: ./client   # Arahkan ke folder frontend/client
+    build: ./client
     container_name: cbt-frontend
     ports:
-      - "3000:8080"   # Kita buka di port 3000, tapi internalnya 8080 (Nginx)
+      - "3000:8080"
     depends_on:
       - backend
     networks:
       - cbt-network
 
-# Jaringan khusus biar mereka bisa saling sapa
 networks:
   cbt-network:
     driver: bridge
