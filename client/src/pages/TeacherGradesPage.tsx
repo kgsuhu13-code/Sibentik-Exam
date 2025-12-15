@@ -144,6 +144,7 @@ const TeacherGradesPage = () => {
             const headers = [
                 ['SIBENTIK EXAM - UJIAN SEKOLAH DIGITAL'],
                 ['Platform Ujian Berbasis Komputer & Smartphone'],
+                ['Jl. Pendidikan No.1, Indonesia | Email: sibentikofficial@gmail.com'],
                 [''],
                 ['LAPORAN HASIL UJIAN SISWA'],
                 [''],
@@ -188,6 +189,11 @@ const TeacherGradesPage = () => {
                 alignment: { horizontal: "center", vertical: "center" }
             };
 
+            const contactStyle = {
+                font: { sz: 9, color: { rgb: "666666" } },
+                alignment: { horizontal: "center", vertical: "center" }
+            };
+
             const reportTitleStyle = {
                 font: { bold: true, sz: 12, underline: true },
                 alignment: { horizontal: "center", vertical: "center" }
@@ -222,18 +228,20 @@ const TeacherGradesPage = () => {
                     if (R === 0) ws[cellAddress].s = titleStyle;
                     // 2. Tagline (Row 1)
                     else if (R === 1) ws[cellAddress].s = taglineStyle;
-                    // 3. Report Title (Row 3)
-                    else if (R === 3) ws[cellAddress].s = reportTitleStyle;
-                    // 4. Meta Info (Rows 5-8)
-                    else if (R >= 5 && R <= 8) {
+                    // 3. Contact (Row 2) - NEW
+                    else if (R === 2) ws[cellAddress].s = contactStyle;
+                    // 4. Report Title (Row 4)
+                    else if (R === 4) ws[cellAddress].s = reportTitleStyle;
+                    // 5. Meta Info (Rows 6-9)
+                    else if (R >= 6 && R <= 9) {
                         ws[cellAddress].s = { font: { bold: C === 0 } }; // Bold First Column
                     }
-                    // 5. Table Header (Row 10)
-                    else if (R === 10) {
+                    // 6. Table Header (Row 11)
+                    else if (R === 11) {
                         ws[cellAddress].s = tableHeaderStyle;
                     }
-                    // 6. Data Rows (Row 11+)
-                    else if (R >= 11) {
+                    // 7. Data Rows (Row 12+)
+                    else if (R >= 12) {
                         // Columns: No(0), Nama(1), Username(2), Status(3), Nilai(4), Benar(5), Salah(6), Mulai(7), Selesai(8)
                         // Left Align: Nama (1), Username (2) - optional
                         if (C === 1) ws[cellAddress].s = dataLeftStyle;
@@ -247,7 +255,8 @@ const TeacherGradesPage = () => {
             ws['!merges'].push(
                 { s: { r: 0, c: 0 }, e: { r: 0, c: 8 } },
                 { s: { r: 1, c: 0 }, e: { r: 1, c: 8 } },
-                { s: { r: 3, c: 0 }, e: { r: 3, c: 8 } }
+                { s: { r: 2, c: 0 }, e: { r: 2, c: 8 } }, // Merge Contact Row
+                { s: { r: 4, c: 0 }, e: { r: 4, c: 8 } }
             );
 
             // --- Column Widths ---
@@ -269,35 +278,44 @@ const TeacherGradesPage = () => {
 
         } else if (type === 'pdf') {
             const doc = new jsPDF('l', 'mm', 'a4'); // Landscape
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const centerX = pageWidth / 2;
 
             // --- Load Logo ---
             const img = new Image();
-            img.src = '/logo.jpg';
+            img.src = '/logo.png'; // Updated to consistent logo
             img.onload = () => {
                 // Header (Kop)
-                doc.addImage(img, 'JPEG', 14, 10, 20, 20); // Logo Left
+                doc.addImage(img, 'PNG', 14, 10, 24, 24); // Logo Left
 
+                // Centered Text
                 doc.setFontSize(16);
                 doc.setFont("helvetica", "bold");
-                doc.text("SIBENTIK EXAM - UJIAN SEKOLAH DIGITAL", 40, 18);
+                doc.text("SIBENTIK EXAM - UJIAN SEKOLAH DIGITAL", centerX, 18, { align: "center" });
 
                 doc.setFontSize(11);
                 doc.setFont("helvetica", "normal");
-                doc.text("Platform Ujian Berbasis Komputer & Smartphone", 40, 25);
+                doc.text("Platform Ujian Berbasis Komputer & Smartphone", centerX, 24, { align: "center" });
 
-                // Line
+                // Contact Info (NEW)
+                doc.setFontSize(10);
+                doc.setTextColor(80);
+                doc.text("Jl. Pendidikan No.1, Indonesia | Email: sibentikofficial@gmail.com", centerX, 29, { align: "center" });
+                doc.setTextColor(0);
+
+                // Line separator
                 doc.setLineWidth(0.5);
-                doc.line(14, 35, 283, 35);
+                doc.line(14, 38, pageWidth - 14, 38);
 
                 // Report Title
                 doc.setFontSize(14);
                 doc.setFont("helvetica", "bold");
-                doc.text("LAPORAN HASIL UJIAN SISWA", 148.5, 45, { align: "center" });
+                doc.text("LAPORAN HASIL UJIAN SISWA", centerX, 48, { align: "center" });
 
                 // Meta Info
                 doc.setFontSize(10);
                 doc.setFont("helvetica", "normal");
-                const startY = 55;
+                const startY = 58;
                 doc.text(`Nama Ujian      : ${examDetail.exam_title}`, 14, startY);
                 doc.text(`Kelas / Jenjang : ${examDetail.class_level}`, 14, startY + 5);
                 doc.text(`Total Peserta   : ${examDetail.finished_count} Selesai / ${examDetail.total_students} Total`, 14, startY + 10);
@@ -329,8 +347,8 @@ const TeacherGradesPage = () => {
             };
 
             img.onerror = () => {
-                toast.error('Gagal memuat logo untuk PDF. Pastikan file logo.jpg tersedia.');
-                // Proceed without logo if fail, or just return
+                toast.error('Gagal memuat logo untuk PDF.');
+                // Fallback PDF generation without logo could go here if needed
             };
         } else {
             // CSV Logic

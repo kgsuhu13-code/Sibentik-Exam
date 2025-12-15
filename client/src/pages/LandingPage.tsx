@@ -2,11 +2,12 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Smartphone, Zap, BarChart3, CheckCircle, ArrowRight, Bot, Lock } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Shield, Smartphone, Zap, BarChart3, CheckCircle, ArrowRight, Bot, Lock, Menu, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const LandingPage: React.FC = () => {
     const navigate = useNavigate();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     // Animation Variants
     const fadeInUp = {
@@ -40,7 +41,7 @@ const LandingPage: React.FC = () => {
                 initial={{ y: -100 }}
                 animate={{ y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="fixed w-full z-50 bg-white/80 backdrop-blur-md border-b border-slate-100"
+                className="fixed w-full z-50 bg-white/90 backdrop-blur-md border-b border-slate-100"
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
@@ -49,6 +50,7 @@ const LandingPage: React.FC = () => {
                             <span className="font-bold text-xl tracking-tight text-slate-800">SIBENTIK<span className="text-blue-600">EXAM</span></span>
                         </div>
 
+                        {/* Desktop Menu */}
                         <div className="hidden md:flex items-center space-x-8">
                             <a href="#features" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Fitur</a>
                             <a href="#pricing" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Harga</a>
@@ -56,7 +58,8 @@ const LandingPage: React.FC = () => {
                             <a href="#contact" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Kontak</a>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        {/* Desktop CTA */}
+                        <div className="hidden md:flex items-center gap-4">
                             <button
                                 onClick={() => navigate('/login')}
                                 className="px-5 py-2 text-sm font-bold text-white bg-blue-600 rounded-full hover:bg-blue-700 hover:shadow-lg hover:-translate-y-0.5 transition-all"
@@ -64,8 +67,57 @@ const LandingPage: React.FC = () => {
                                 Masuk Aplikasi
                             </button>
                         </div>
+
+                        {/* Mobile Toggle */}
+                        <div className="md:hidden flex items-center">
+                            <button
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                                className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                            </button>
+                        </div>
                     </div>
                 </div>
+
+                {/* Mobile Menu Dropdown */}
+                <AnimatePresence>
+                    {isMobileMenuOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="md:hidden bg-white border-t border-slate-100 overflow-hidden"
+                        >
+                            <div className="px-4 py-6 space-y-4 flex flex-col">
+                                {[
+                                    { label: 'Fitur', id: 'features' },
+                                    { label: 'Harga', id: 'pricing' },
+                                    { label: 'Tentang Kami', id: 'about' },
+                                    { label: 'Kontak', id: 'contact' }
+                                ].map((item) => (
+                                    <a
+                                        key={item.id}
+                                        href={`#${item.id}`}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className="text-base font-medium text-slate-600 hover:text-blue-600 hover:bg-slate-50 px-4 py-2 rounded-lg transition-all"
+                                    >
+                                        {item.label}
+                                    </a>
+                                ))}
+                                <div className="pt-4 border-t border-slate-100 mt-2">
+                                    <button
+                                        onClick={() => navigate('/login')}
+                                        className="w-full py-3 text-center font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md transition-all flex items-center justify-center gap-2"
+                                    >
+                                        Masuk Aplikasi <ArrowRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </motion.nav>
 
             {/* --- HERO SECTION --- */}
@@ -97,12 +149,15 @@ const LandingPage: React.FC = () => {
                             </motion.p>
                             <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4">
                                 <button
-                                    onClick={() => navigate('/login')}
+                                    onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
                                     className="px-8 py-4 bg-blue-600 text-white font-bold rounded-xl shadow-xl shadow-blue-200 hover:bg-blue-700 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
                                 >
-                                    Mulai Sekarang <ArrowRight className="w-5 h-5" />
+                                    Lihat Paket Harga <ArrowRight className="w-5 h-5" />
                                 </button>
-                                <button className="px-8 py-4 bg-white text-slate-700 font-bold border border-slate-200 rounded-xl hover:bg-slate-50 transition-all">
+                                <button
+                                    onClick={() => navigate('/features')}
+                                    className="px-8 py-4 bg-white text-slate-700 font-bold border border-slate-200 rounded-xl hover:bg-slate-50 transition-all"
+                                >
                                     Pelajari Fitur
                                 </button>
                             </motion.div>
@@ -230,7 +285,7 @@ const LandingPage: React.FC = () => {
                                 </li>
                                 <li className="flex items-start gap-3 text-slate-600">
                                     <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                                    <span className="text-sm font-medium">Aplikasi Android & iOS</span>
+                                    <span className="text-sm font-medium">Akses Mudah di HP & Laptop</span>
                                 </li>
                                 <li className="flex items-start gap-3 text-slate-600">
                                     <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
@@ -242,7 +297,10 @@ const LandingPage: React.FC = () => {
                                 </li>
                             </ul>
 
-                            <button className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1 transition-all">
+                            <button
+                                onClick={() => window.open('https://wa.me/6288975178757?text=Halo%20Admin%20Sibentik%2C%20saya%20tertarik%20berlangganan%20Paket%20Sekolah.', '_blank')}
+                                className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1 transition-all"
+                            >
                                 Pilih Paket Ini
                             </button>
                             <p className="text-center text-xs text-slate-400 mt-4">Minimum 50 siswa</p>
@@ -277,14 +335,14 @@ const LandingPage: React.FC = () => {
                                         <CheckCircle className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
                                         <span className="text-sm font-medium">Dedicated Server</span>
                                     </li>
-                                    <li className="flex items-start gap-3 text-slate-600">
-                                        <CheckCircle className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
-                                        <span className="text-sm font-medium">Integrasi Dapodik (Opsional)</span>
-                                    </li>
+
                                 </ul>
                             </div>
 
-                            <button className="w-full py-4 bg-slate-50 text-slate-700 font-bold border border-slate-200 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition-all">
+                            <button
+                                onClick={() => window.open('https://wa.me/6288975178757?text=Halo%20Admin%20Sibentik%2C%20saya%20ingin%20tanya%20tentang%20Paket%20Enterprise%2FYayasan.', '_blank')}
+                                className="w-full py-4 bg-slate-50 text-slate-700 font-bold border border-slate-200 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition-all"
+                            >
                                 Kontak Sales
                             </button>
                         </motion.div>
@@ -358,10 +416,10 @@ const LandingPage: React.FC = () => {
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => navigate('/login')}
+                            onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
                             className="px-10 py-4 bg-white text-blue-700 font-bold rounded-xl shadow-lg hover:shadow-xl hover:bg-blue-50 transition-all relative z-10"
                         >
-                            Mulai Sekarang Gratis
+                            Lihat Paket Harga
                         </motion.button>
                     </motion.div>
                 </div>
@@ -384,9 +442,9 @@ const LandingPage: React.FC = () => {
                         <div>
                             <h4 className="text-white font-bold mb-4">Hubungi Kami</h4>
                             <ul className="space-y-2 text-sm">
-                                <li>support@sibentik.com</li>
-                                <li>+62 812 3456 7890</li>
-                                <li>Semarang, Indonesia</li>
+                                <li>sibentikofficial@gmail.com</li>
+                                <li>+62 889 7517 8757</li>
+                                <li>Tangerang, Indonesia</li>
                             </ul>
                         </div>
                     </div>

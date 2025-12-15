@@ -9,6 +9,7 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import classRoutes from './routes/classRoutes.js';
 import pool from './config/db.js';
+import { checkMaintenanceMode } from './middleware/maintenanceMiddleware.js';
 
 dotenv.config();
 
@@ -18,6 +19,9 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors()); // Agar frontend bisa akses backend
 app.use(express.json()); // Agar bisa baca format JSON
+
+// Global Maintenance Check
+app.use(checkMaintenanceMode); // <-- Add here
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -68,6 +72,14 @@ const initDb = async () => {
             ALTER COLUMN start_time TYPE TIMESTAMPTZ USING start_time AT TIME ZONE 'UTC',
             ALTER COLUMN end_time TYPE TIMESTAMPTZ USING end_time AT TIME ZONE 'UTC';
             
+            -- Migrasi Sekolah: Tambah subscription_end_date
+            ALTER TABLE schools 
+            ADD COLUMN IF NOT EXISTS subscription_end_date TIMESTAMP;
+
+            -- Migrasi Sekolah: Tambah total_requests
+            ALTER TABLE schools 
+            ADD COLUMN IF NOT EXISTS total_requests BIGINT DEFAULT 0;
+
             -- Pastikan tabel exam_sessions juga menggunakan TIMESTAMPTZ jika ada waktu
             ALTER TABLE exam_sessions 
             ALTER COLUMN start_time TYPE TIMESTAMPTZ USING start_time AT TIME ZONE 'UTC',

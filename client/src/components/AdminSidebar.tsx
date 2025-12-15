@@ -1,13 +1,13 @@
+
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
     LayoutDashboard,
     Database,
     Users,
-    MonitorPlay,
     Settings,
     LogOut,
-    Shield
+    Wallet
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -17,14 +17,13 @@ const AdminSidebar = () => {
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/admin-dashboard' },
         { icon: Database, label: 'Manajemen Sekolah', path: '/admin/schools' },
-        { icon: Users, label: 'Manajemen User', path: '/admin/users' },
-        { icon: MonitorPlay, label: 'Monitoring Global', path: '/admin/monitoring' },
+        { icon: Wallet, label: 'Keuangan', path: '/admin/finance' },
         { icon: Settings, label: 'Pengaturan', path: '/admin/settings' },
     ];
 
     return (
         <div className="h-screen w-64 bg-slate-900 text-white flex flex-col fixed left-0 top-0 shadow-xl z-50">
-            {/* Logo Area - Admin Special Color */}
+            {/* Logo Area */}
             <div className="p-6 flex items-center gap-3 border-b border-slate-800 bg-slate-950">
                 <img src="/logo.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-slate-200 p-1" />
                 <span className="text-xl font-bold tracking-wide">Admin Panel</span>

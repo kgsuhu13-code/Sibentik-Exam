@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 interface User {
     id: number;
     username: string;
+    full_name: string;
     role: 'teacher' | 'student';
 }
 
@@ -32,6 +33,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const storedToken = localStorage.getItem('token');
         const storedRole = localStorage.getItem('role');
         const storedUser = localStorage.getItem('username');
+        const storedName = localStorage.getItem('full_name');
         const storedId = localStorage.getItem('id');
 
         if (storedToken && storedRole && storedUser) {
@@ -39,6 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setUser({
                 id: storedId ? parseInt(storedId) : 0,
                 username: storedUser,
+                full_name: storedName || storedUser,
                 role: storedRole as 'teacher' | 'student'
             });
         }
@@ -49,6 +52,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('token', newToken);
         localStorage.setItem('role', userData.role);
         localStorage.setItem('username', userData.username);
+        // Fallback to username if full_name is null/undefined
+        localStorage.setItem('full_name', userData.full_name || userData.username);
         localStorage.setItem('id', userData.id.toString());
 
         setToken(newToken);
@@ -59,6 +64,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.removeItem('token');
         localStorage.removeItem('role');
         localStorage.removeItem('username');
+        localStorage.removeItem('full_name');
         localStorage.removeItem('id');
         setToken(null);
         setUser(null);

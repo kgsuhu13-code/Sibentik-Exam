@@ -10,7 +10,7 @@ const Navbar = () => {
             {/* Left Side (Breadcrumb or Title - Optional) */}
             <div>
                 <h2 className="text-slate-500 text-sm font-medium">
-                    Selamat Datang, <span className="text-slate-800 font-bold">{user?.username || 'Guru'}</span>
+                    Selamat Datang, <span className="text-slate-800 font-bold">{user?.full_name || user?.username || 'Guru'}</span>
                 </h2>
             </div>
 
@@ -23,7 +23,7 @@ const Navbar = () => {
 
                 <div className="flex items-center gap-3 pl-6 border-l border-slate-200">
                     <div className="text-right hidden md:block">
-                        <p className="text-sm font-semibold text-slate-800">{user?.username}</p>
+                        <p className="text-sm font-semibold text-slate-800">{user?.full_name || user?.username}</p>
                         <p className="text-xs text-slate-500 uppercase">{user?.role}</p>
                     </div>
                     <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center border border-slate-200">

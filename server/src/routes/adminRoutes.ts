@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAdminDashboardStats, getUsers, createUser, getSchools, createSchool, importStudents, deleteUser, deleteAllUsersBySchool } from '../controllers/adminController.js';
+import { getAdminDashboardStats, getUsers, createUser, getSchools, createSchool, importStudents, deleteUser, deleteAllUsersBySchool, updateSchoolSubscription, getPaymentHistory, resetSchoolStats, getServerHealth, getMaintenanceStatus, toggleMaintenance } from '../controllers/adminController.js';
 import { authenticateToken, requireAuth } from '../middleware/authMiddleware.js';
 import { createRequire } from 'module';
 
@@ -31,5 +31,11 @@ router.post('/schools', createSchool);
 router.post('/import-students', upload.single('file'), importStudents);
 router.delete('/users/:id', deleteUser);
 router.delete('/schools/:schoolId/users', deleteAllUsersBySchool);
+router.put('/schools/:id/subscription', updateSchoolSubscription);
+router.get('/payments', getPaymentHistory);
+router.post('/schools/reset-stats', resetSchoolStats);
+router.get('/health', getServerHealth);
+router.get('/system/status', getMaintenanceStatus);
+router.post('/system/maintenance', toggleMaintenance);
 
 export default router;

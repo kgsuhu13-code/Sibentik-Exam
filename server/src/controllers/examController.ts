@@ -138,6 +138,7 @@ export const createExam = async (req: Request, res: Response): Promise<void> => 
         // Invalidate Exam Lists (For all users in school ideally, but for now clear all lists)
         // Optimization: Could be specific `exams:list:${schoolId}:*` if accessible here
         await clearCache('exams:list:*');
+        await redis.del(`dashboard:teacher:${created_by}`);
 
         res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -166,6 +167,7 @@ export const deleteExam = async (req: Request, res: Response): Promise<void> => 
         await pool.query('DELETE FROM exams WHERE id = $1', [id]);
 
         await clearCache('exams:list:*');
+        await redis.del(`dashboard:teacher:${userId}`);
 
         res.json({ message: 'Jadwal ujian berhasil dihapus' });
     } catch (error) {
@@ -235,7 +237,7 @@ export const publishExam = async (req: Request, res: Response): Promise<void> =>
 
     try {
         const result = await pool.query(
-            'UPDATE exams SET is_published = $1 WHERE id = $2 RETURNING *',
+            'UPDATE exams SET is_published = $1 WHERE id = $2 RETURNING created_by',
             [is_published, id]
         );
 
@@ -243,6 +245,15 @@ export const publishExam = async (req: Request, res: Response): Promise<void> =>
             res.status(404).json({ message: 'Ujian tidak ditemukan' });
             return;
         }
+
+        const createdBy = result.rows[0].created_by;
+
+        // Invalidate Exam Lists (so students see the change)
+        await clearCache('exams:list:*');
+        // Fix: Invalidate ALL student history caches so they see the grade immediately
+        await clearCache('student:history:*');
+
+        await redis.del(`dashboard:teacher:${createdBy}`);
 
         res.json({ message: `Nilai ujian berhasil ${is_published ? 'dipublikasikan' : 'disembunyikan'}` });
     } catch (error) {

@@ -55,7 +55,7 @@ const StudentExamPage = () => {
         if (!user?.id) return;
 
         try {
-            console.log('Fetching exam data...', { examId: id, studentId: user.id });
+
             const response = await api.get(`/exams/${id}/take?studentId=${user.id}`);
             setExam(response.data.exam);
             setQuestions(response.data.questions);
@@ -320,6 +320,18 @@ const StudentExamPage = () => {
 
     // Fungsi Trigger Modal
     const handleFinishClick = async () => {
+        const answeredCount = Object.keys(answers).length;
+        const totalQuestions = questions.length;
+        const unansweredCount = totalQuestions - answeredCount;
+
+        if (unansweredCount > 0) {
+            toast.error(`Masih ada ${unansweredCount} soal yang belum dijawab. Harap selesaikan semua soal sebelum mengumpulkan.`, {
+                position: "top-center",
+                autoClose: 4000
+            });
+            return;
+        }
+
         const result = await showConfirm(
             'Selesaikan Ujian?',
             "Pastikan Anda sudah memeriksa semua jawaban. Jawaban tidak dapat diubah setelah dikumpulkan.",
@@ -477,7 +489,7 @@ const StudentExamPage = () => {
                     >
                         <Menu className="w-6 h-6" />
                     </button>
-                    <img src="/logo.jpg" alt="Sibentik Exam" className="w-8 h-8 rounded-lg object-contain bg-white shadow-sm" />
+                    <img src="/logo.png" alt="Sibentik Exam" className="w-8 h-8 rounded-lg object-contain bg-white shadow-sm" />
                     <div className="hidden sm:block">
                         <h1 className="font-bold text-slate-800 text-sm md:text-lg leading-tight line-clamp-1">{exam?.title}</h1>
                     </div>
@@ -586,9 +598,9 @@ const StudentExamPage = () => {
                                     <button
                                         onClick={handleFinishClick}
                                         disabled={isSubmitting}
-                                        className={`px-4 md:px-6 py-2.5 rounded-xl font-bold transition-all shadow-sm hover:shadow-md flex items-center gap-2 text-sm md:text-base ${isSubmitting
-                                            ? 'bg-green-500 text-white cursor-not-allowed'
-                                            : 'bg-green-600 text-white hover:bg-green-700'
+                                        className={`px-4 md:px-6 py-2.5 rounded-xl font-bold transition-all shadow-sm hover:shadow-md flex items-center gap-2 text-sm md:text-base ${Object.keys(answers).length < questions.length
+                                            ? 'bg-slate-400 text-slate-100 cursor-not-allowed opacity-80'
+                                            : (isSubmitting ? 'bg-green-500 text-white cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700')
                                             }`}
                                     >
                                         {isSubmitting ? (

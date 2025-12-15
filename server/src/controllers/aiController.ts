@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import pool from '../config/db.js';
+import redis from '../config/redis.js';
 import { GoogleGenAI } from "@google/genai";
 
 export const generateQuestions = async (req: Request, res: Response): Promise<void> => {
@@ -18,25 +19,35 @@ export const generateQuestions = async (req: Request, res: Response): Promise<vo
         const prompt = `
             Buatkan ${count} soal pilihan ganda tentang topik '${topic}' untuk tingkat kesulitan '${difficulty}'.
             
-            ATURAN PENTING:
-            1. Format output WAJIB JSON Array murni tanpa markdown (jangan pakai \`\`\`json).
-            2. JIKA soal/jawaban adalah kode program (seperti HTML tag <p>, <div>, dll), WAJIB gunakan Escape Character Entity: ganti '<' dengan '&lt;' dan '>' dengan '&gt;'. Jangan tulis raw HTML tag untuk kode karena akan dirender browser dan menjadi tidak terlihat.
-            3. Anda BOLEH menggunakan tag HTML standar untuk formatting teks (seperti <b>, <i>, <br>, <pre> untuk blok kode).
-            4. Jika ada rumus Matematika/LaTeX, GUNAKAN DOUBLE BACKSLASH agar JSON valid (contoh: gunakan \\\\frac bukan \\frac, \\\\times bukan \\times).
-            5. Pastikan JSON valid dan bisa diparsing langsung.
+            ATURAN PENULISAN (SANGAT PENTING):
+            1. Output WAJIB JSON Array murni.
+            2. "content" (Pertanyaan) dan "options" (Pilihan Jawaban) akan dirender sebagai HTML.
+            
+            3. ATURAN FORMATTING VISUAL (TEBAL/MIRING/PANGKAT):
+               - UNTUK EFEK VISUAL: GUNAKAN TAG HTML MURNI (JANGAN DI-ESCAPE).
+               - Contoh Benar: "Kata <i>asing</i> harus miring" -> Browser merender: "Kata *asing* harus miring"
+               - Contoh Salah: "Kata &lt;i&gt;asing&lt;/i&gt;" -> Browser merender: "Kata <i>asing</i>" (Teks tag terlihat)
+               - Tag yang BOLEH dipakai: <b>, <i>, <u>, <sub>, <sup>.
+            
+            4. ATURAN KODE PROGRAM (HANYA JIKA MEMBAHAS SINTAKS):
+               - JIKA soal menanyakan tentang kode/sintaks, BARULAH tag tersebut di-escape.
+               - Contoh: "Apa fungsi tag &lt;br&gt;?" -> Browser merender: "Apa fungsi tag <br>?"
 
-            Struktur objek JSON:
+            5. JANGAN bungkus jawaban dengan tag block seperti <p>, <div>, <h1>. Tulis isinya langsung.
+            6. Rumus Matematika gunakan LaTeX dengan double backslash: \\\\frac{a}{b}.
+
+            FORMAT OUTPUT:
             [
               {
-                "content": "Pertanyaan soal...",
+                "content": "Pertanyaan...",
                 "options": [
-                  { "key": "A", "text": "Pilihan A" },
-                  { "key": "B", "text": "Pilihan B" },
-                  { "key": "C", "text": "Pilihan C" },
-                  { "key": "D", "text": "Pilihan D" },
-                  { "key": "E", "text": "Pilihan E" }
+                  { "key": "A", "text": "Jawaban A (Bisa pakai <i>italic</i>)" },
+                  { "key": "B", "text": "Jawaban B (Bisa pakai <b>bold</b>)" },
+                  { "key": "C", "text": "Jawaban C" },
+                  { "key": "D", "text": "Jawaban D" },
+                  { "key": "E", "text": "Jawaban E" }
                 ],
-                "correct_answer": "Kunci Jawaban (Hanya huruf A/B/C/D/E)",
+                "correct_answer": "A",
                 "points": 10
               }
             ]
@@ -116,6 +127,23 @@ export const generateQuestions = async (req: Request, res: Response): Promise<vo
                  VALUES ($1, $2, $3, $4, $5, $6)`,
                 [bank_id, 'multiple_choice', q.content, optionsStr, q.correct_answer, q.points || 10]
             );
+        }
+
+        // Invalidate Cache
+        try {
+            await redis.del(`questions:${bank_id}`);
+
+            // Clear banks cache (to update counts)
+            const stream = redis.scanStream({ match: 'banks:*', count: 100 });
+            stream.on('data', (keys: string[]) => {
+                if (keys.length) {
+                    const pipeline = redis.pipeline();
+                    keys.forEach((key: any) => pipeline.del(key));
+                    pipeline.exec();
+                }
+            });
+        } catch (cacheError) {
+            console.error('Cache invalidation failed:', cacheError);
         }
 
         res.json({ message: `Berhasil men-generate ${generatedQuestions.length} soal`, data: generatedQuestions });

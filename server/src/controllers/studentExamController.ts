@@ -36,7 +36,7 @@ export const getExamQuestionsForStudent = async (req: Request, res: Response): P
     const { examId } = req.params;
     const studentId = req.query.studentId;
 
-    console.log(`[DEBUG] getExamQuestionsForStudent. ExamId: ${examId}, StudentId: ${studentId}`);
+
 
     try {
         // Ensure columns exist (Auto-migration)
@@ -119,7 +119,7 @@ export const getExamQuestionsForStudent = async (req: Request, res: Response): P
                     return;
                 }
 
-                console.log(`[DEBUG] Creating new session for student ${studentId} in getExamQuestions`);
+
                 await pool.query(
                     `INSERT INTO exam_sessions (exam_id, student_id, status, start_time, answers, current_question_index, is_locked, violation_count, violation_log)
                      VALUES ($1, $2, 'ongoing', NOW(), '{}', 0, FALSE, 0, '[]')`,
@@ -159,7 +159,7 @@ export const getExamQuestionsForStudent = async (req: Request, res: Response): P
 
                 serverTimeRemaining = Math.max(0, Math.floor(durationSeconds - elapsedSeconds));
 
-                console.log(`[DEBUG] Timer Calculation: Duration=${durationSeconds}s, Elapsed=${elapsedSeconds}s, Remaining=${serverTimeRemaining}s`);
+
 
                 // Jika waktu habis, tolak akses (kecuali guru/admin mau lihat, tapi ini endpoint siswa)
                 if (serverTimeRemaining <= 0) {
@@ -178,10 +178,10 @@ export const getExamQuestionsForStudent = async (req: Request, res: Response): P
         if (cachedQuestions) {
             questions = JSON.parse(cachedQuestions);
         } else {
-            // Fetch clean list from DB
-            const qRes = await pool.query('SELECT id, type, content, options, points FROM questions WHERE bank_id = $1 ORDER BY id ASC', [exam.bank_id]);
+            // Fetch FULL list from DB (Cache must contain everything for other controllers)
+            const qRes = await pool.query('SELECT * FROM questions WHERE bank_id = $1 ORDER BY id ASC', [exam.bank_id]);
             questions = qRes.rows;
-            // Set cache
+            // Set cache (FULL DATA)
             await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(questions));
         }
 
@@ -190,9 +190,15 @@ export const getExamQuestionsForStudent = async (req: Request, res: Response): P
             questions = questions.sort(() => Math.random() - 0.5);
         }
 
-        // 4. Sanitasi & Randomize Jawaban
-        questions = questions.map(q => {
-            let options = q.options;
+        // 4. Sanitasi (HAPUS KUNCI JAWABAN) & Randomize Options
+        const studentQuestions = questions.map((q: any) => {
+            // DEEP COPY object to avoid mutating the original reference if it's reused
+            const cleanQ = { ...q };
+
+            // SECURITY: Hapus kunci jawaban agar tidak dikirim ke siswa
+            delete cleanQ.correct_answer;
+
+            let options = cleanQ.options;
             if (typeof options === 'string') {
                 try { options = JSON.parse(options); } catch (e) { options = {}; }
             }
@@ -205,7 +211,7 @@ export const getExamQuestionsForStudent = async (req: Request, res: Response): P
             if (exam.is_random_answer && optionsArray.length > 0) {
                 optionsArray = optionsArray.sort(() => Math.random() - 0.5);
             }
-            return { ...q, options: optionsArray };
+            return { ...cleanQ, options: optionsArray };
         });
 
         res.json({
@@ -215,7 +221,7 @@ export const getExamQuestionsForStudent = async (req: Request, res: Response): P
                 duration: exam.duration,
                 end_time: exam.end_time
             },
-            questions,
+            questions: studentQuestions, // Kirim soal yang sudah disanitasi
             saved_session: savedSession,
             remaining_seconds: serverTimeRemaining
         });
@@ -312,10 +318,19 @@ export const submitExam = async (req: Request, res: Response): Promise<void> => 
         }
 
         // Invalidate caches if finished
+        // Invalidate caches if finished
         if (finished) {
             await redis.del(`student:history:${studentId}`);
             // Fix: Also invalidate the exam list for this student so dashboard updates immediately
             await clearCache(`exams:list:*:*:student:${studentId}`);
+
+            // Fix: Invalidate Teacher's Grade Summary AND Dashboard
+            const examCreator = await pool.query('SELECT created_by FROM exams WHERE id = $1', [examId]);
+            if (examCreator.rows.length > 0) {
+                const teacherId = examCreator.rows[0].created_by;
+                await redis.del(`grades:summary:${teacherId}`);
+                await redis.del(`dashboard:teacher:${teacherId}`);
+            }
         }
 
         res.json({ message: 'Jawaban berhasil disimpan' });
@@ -403,14 +418,14 @@ export const getStudentHistory = async (req: Request, res: Response): Promise<vo
 // 13. Ambil Detail Review Ujian (Untuk Guru/Siswa)
 export const getExamReview = async (req: Request, res: Response): Promise<void> => {
     const { examId, studentId } = req.params;
-    console.log(`[DEBUG] getExamReview START. Params: examId=${examId}, studentId=${studentId}`);
+
 
     try {
         // Ensure scores column exists (Auto-migration fallback)
         await pool.query(`ALTER TABLE exam_sessions ADD COLUMN IF NOT EXISTS scores JSONB DEFAULT '{}'`);
 
         // 1. Ambil Sesi
-        console.log('[DEBUG] Fetching session...');
+
         const sessionResult = await pool.query(`
             SELECT es.*, e.title as exam_title, e.bank_id
             FROM exam_sessions es
@@ -418,7 +433,7 @@ export const getExamReview = async (req: Request, res: Response): Promise<void> 
             WHERE es.exam_id = $1 AND es.student_id = $2
         `, [examId, studentId]);
 
-        console.log(`[DEBUG] Session found: ${sessionResult.rows.length}`);
+
 
         if (sessionResult.rows.length === 0) {
             res.status(404).json({ message: 'Sesi ujian tidak ditemukan' });
@@ -427,7 +442,7 @@ export const getExamReview = async (req: Request, res: Response): Promise<void> 
         const session = sessionResult.rows[0];
 
         // 2. Ambil Soal Lengkap (Optimized with Redis)
-        console.log(`[DEBUG] Fetching questions for bank_id: ${session.bank_id}`);
+
 
         let rawQuestions: any[] = [];
         const cacheKey = `questions:${session.bank_id}`;
@@ -443,7 +458,7 @@ export const getExamReview = async (req: Request, res: Response): Promise<void> 
             await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(rawQuestions));
         }
 
-        console.log(`[DEBUG] Questions found: ${rawQuestions.length}`);
+
 
         const questions = rawQuestions.map(q => {
             let options = q.options;
@@ -504,6 +519,17 @@ export const submitExamScore = async (req: Request, res: Response): Promise<void
              WHERE exam_id = $3 AND student_id = $4`,
             [JSON.stringify(scores), totalScore, examId, studentId]
         );
+
+        // Invalidate Caches
+        await redis.del(`student:history:${studentId}`);
+
+        const examCreator = await pool.query('SELECT created_by FROM exams WHERE id = $1', [examId]);
+        if (examCreator.rows.length > 0) {
+            const teacherId = examCreator.rows[0].created_by;
+            await redis.del(`grades:summary:${teacherId}`);
+            await redis.del(`dashboard:teacher:${teacherId}`);
+        }
+
         res.json({ message: 'Nilai berhasil disimpan', totalScore });
     } catch (error) {
         console.error(error);

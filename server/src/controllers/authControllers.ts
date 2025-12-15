@@ -57,6 +57,28 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
+        // 2.5. Cek Status Langganan Sekolah (Jika bukan super admin)
+        if (user.role !== 'admin' && user.school_id) {
+            const schoolRes = await pool.query('SELECT subscription_end_date, subscription_status FROM schools WHERE id = $1', [user.school_id]);
+
+            if (schoolRes.rows.length > 0) {
+                const school = schoolRes.rows[0];
+                const now = new Date();
+
+                // Cek Status Eksplisit
+                if (school.subscription_status && school.subscription_status !== 'active') {
+                    res.status(403).json({ message: 'Akun sekolah Anda dinonaktifkan. Hubungi Admin Sibentik.' });
+                    return;
+                }
+
+                // Cek Tanggal Expired
+                if (school.subscription_end_date && new Date(school.subscription_end_date) < now) {
+                    res.status(403).json({ message: 'Masa berlangganan sekolah telah habis. Hubungi Admin Sibentik untuk perpanjangan.' });
+                    return;
+                }
+            }
+        }
+
         // 3. Buat Token JWT
         const token = jwt.sign(
             {

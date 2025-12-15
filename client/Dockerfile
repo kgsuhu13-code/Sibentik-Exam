@@ -14,6 +14,11 @@ RUN npm install --legacy-peer-deps
 # Copy seluruh source code frontend
 COPY . .
 
+
+# Validasi Environment Variable saat Build
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 # 🔥 Lakukan Build (Vite akan mengubah TS/React jadi HTML/JS di folder /dist)
 RUN npm run build
 

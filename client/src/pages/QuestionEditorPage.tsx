@@ -411,6 +411,8 @@ const QuestionEditorPage = () => {
             points
         };
 
+
+
         try {
             if (selectedQuestionId) {
                 await api.put(`/questions/questions/${selectedQuestionId}`, payload);

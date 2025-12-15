@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import pool from '../config/db.js';
 
 interface UserPayload {
     id: number;
@@ -39,6 +40,15 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
         }
 
         req.user = user as UserPayload;
+
+        // [MONITORING] Increment request counter if school_id exists
+        if (req.user?.school_id) {
+            // Fire and forget (don't await) to not block response time
+            pool.query('UPDATE schools SET total_requests = total_requests + 1 WHERE id = $1', [req.user.school_id]).catch(err => {
+                console.error('Failed to log school request:', err);
+            });
+        }
+
         next();
     });
 };

@@ -1,7 +1,9 @@
 import type { Request, Response } from 'express';
 import pool from '../config/db.js';
+import redis from '../config/redis.js';
 import bcrypt from 'bcrypt';
 import { createRequire } from 'module';
+import os from 'os';
 
 const require = createRequire(import.meta.url);
 const XLSX = require('xlsx');
@@ -17,9 +19,10 @@ export const getAdminDashboardStats = async (req: Request, res: Response): Promi
             const globalStats = await pool.query(`
                 SELECT 
                     (SELECT COUNT(*) FROM schools) as total_schools,
-                    (SELECT COUNT(*) FROM users WHERE role != 'admin') as total_users,
-                    (SELECT COUNT(*) FROM exams) as total_exams
-            `);
+                (SELECT COUNT(*) FROM users WHERE role != 'admin') as total_users,
+                (SELECT COUNT(*) FROM exams) as total_exams,
+                (SELECT COUNT(*) FROM schools WHERE subscription_end_date < NOW()) as expired_schools
+        `);
             res.json(globalStats.rows[0]);
             return;
         }
@@ -31,12 +34,12 @@ export const getAdminDashboardStats = async (req: Request, res: Response): Promi
 
         // School Admin Stats
         const stats = await pool.query(`
-            SELECT 
-                (SELECT COUNT(*) FROM users WHERE school_id = $1 AND role = 'student') as total_students,
-                (SELECT COUNT(*) FROM users WHERE school_id = $1 AND role = 'teacher') as total_teachers,
-                (SELECT COUNT(*) FROM question_banks WHERE school_id = $1) as total_banks,
-                (SELECT COUNT(*) FROM exams WHERE school_id = $1 AND start_time <= NOW() AND end_time >= NOW()) as active_exams
-        `, [schoolId]);
+        SELECT 
+            (SELECT COUNT(*) FROM users WHERE school_id = $1 AND role = 'student') as total_students,
+            (SELECT COUNT(*) FROM users WHERE school_id = $1 AND role = 'teacher') as total_teachers,
+            (SELECT COUNT(*) FROM question_banks WHERE school_id = $1) as total_banks,
+            (SELECT COUNT(*) FROM exams WHERE school_id = $1 AND start_time <= NOW() AND end_time >= NOW()) as active_exams
+    `, [schoolId]);
 
         res.json(stats.rows[0]);
 
@@ -149,7 +152,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
         await pool.query(
             `INSERT INTO users (username, password_hash, full_name, role, class_level, school_id)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
+         VALUES ($1, $2, $3, $4, $5, $6)`,
             [username, hashedPassword, full_name, role, class_level || null, schoolId]
         );
 
@@ -173,18 +176,21 @@ export const getSchools = async (req: Request, res: Response): Promise<void> => 
         }
 
         const query = `
-            SELECT 
-                s.id, 
-                s.name, 
-                s.address, 
-                s.subscription_status,
-                s.max_students,
-                (SELECT COUNT(*) FROM users u WHERE u.school_id = s.id AND u.role = 'student') as student_count,
-                (SELECT COUNT(*) FROM users u WHERE u.school_id = s.id AND u.role = 'teacher') as teacher_count,
-                (SELECT COUNT(*) FROM exams e WHERE e.school_id = s.id AND e.start_time <= NOW() AND e.end_time >= NOW()) as active_exams
-            FROM schools s
-            ORDER BY s.id ASC
-        `;
+        SELECT 
+            s.id, 
+            s.name, 
+            s.address, 
+            s.subscription_status,
+            s.subscription_end_date,
+            s.max_students,
+            s.total_requests,
+            (SELECT COUNT(*) FROM users u WHERE u.school_id = s.id AND u.role = 'student') as student_count,
+            (SELECT COUNT(*) FROM users u WHERE u.school_id = s.id AND u.role = 'teacher') as teacher_count,
+            (SELECT COUNT(*) FROM exams e WHERE e.school_id = s.id AND e.start_time <= NOW() AND e.end_time >= NOW()) as active_exams,
+            (SELECT COUNT(*) FROM exam_sessions sa JOIN users u ON sa.student_id = u.id WHERE u.school_id = s.id) as database_footprint
+        FROM schools s
+        ORDER BY s.id ASC
+    `;
 
         const result = await pool.query(query);
         res.json(result.rows);
@@ -207,7 +213,7 @@ export const createSchool = async (req: Request, res: Response): Promise<void> =
 
         const result = await pool.query(
             `INSERT INTO schools (name, address, max_students, subscription_status)
-             VALUES ($1, $2, $3, $4) RETURNING *`,
+         VALUES ($1, $2, $3, $4) RETURNING *`,
             [name, address, max_students || 1000, subscription_status || 'active']
         );
 
@@ -270,7 +276,7 @@ export const importStudents = async (req: Request, res: Response): Promise<void>
 
                 await pool.query(
                     `INSERT INTO users (username, password_hash, full_name, role, class_level, school_id)
-                     VALUES ($1, $2, $3, 'student', $4, $5)`,
+                 VALUES ($1, $2, $3, 'student', $4, $5)`,
                     [username, hashedPassword, full_name, class_level || null, schoolId]
                 );
                 successCount++;
@@ -351,6 +357,171 @@ export const deleteAllUsersBySchool = async (req: Request, res: Response): Promi
 
     } catch (error) {
         console.error('Error deleting all users:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+export const updateSchoolSubscription = async (req: Request, res: Response): Promise<void> => {
+    const client = await pool.connect();
+    try {
+        const { id } = req.params;
+        const { end_date, status, payment_amount, payment_desc } = req.body;
+        const role = (req as any).user?.role;
+
+        if (role !== 'admin') {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        await client.query('BEGIN');
+
+        // Update School
+        await client.query(
+            `UPDATE schools 
+         SET subscription_end_date = $1, 
+             subscription_status = COALESCE($2, subscription_status)
+         WHERE id = $3`,
+            [end_date, status, id]
+        );
+
+        // Record Payment (Optional)
+        if (payment_amount && Number(payment_amount) > 0) {
+            const receiptNo = `RCP/${new Date().getFullYear()}/${Math.floor(1000 + Math.random() * 9000)}`;
+            await client.query(
+                `INSERT INTO school_payments (school_id, amount, description, receipt_no)
+                 VALUES ($1, $2, $3, $4)`,
+                [id, payment_amount, payment_desc || 'Perpanjangan Layanan', receiptNo]
+            );
+        }
+
+        await client.query('COMMIT');
+
+        res.json({ message: 'Subscription updated and payment recorded successfully' });
+
+    } catch (error) {
+        await client.query('ROLLBACK');
+        console.error('Error updating subscription:', error);
+        res.status(500).json({ message: 'Server Error' });
+    } finally {
+        client.release();
+    }
+};
+
+export const getPaymentHistory = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const role = (req as any).user?.role;
+        if (role !== 'admin') {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const query = `
+            SELECT p.*, s.name as school_name 
+            FROM school_payments p
+            JOIN schools s ON p.school_id = s.id
+            ORDER BY p.payment_date DESC
+            LIMIT 100
+        `;
+        const result = await pool.query(query);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Error fetching payments:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+export const resetSchoolStats = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const role = (req as any).user?.role;
+
+        if (role !== 'admin') {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        await pool.query('UPDATE schools SET total_requests = 0');
+
+        res.json({ message: 'Semua statistik permintaan sekolah berhasil direset.' });
+
+    } catch (error) {
+        console.error('Error resetting statistics:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+export const getServerHealth = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const startDb = Date.now();
+        await pool.query('SELECT 1');
+        const dbLatency = Date.now() - startDb;
+
+        const startRedis = Date.now();
+        await redis.ping();
+        const redisLatency = Date.now() - startRedis;
+
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const usedMem = totalMem - freeMem;
+        const memUsage = Math.round((usedMem / totalMem) * 100);
+
+        // CPU Load (Average 1 minute)
+        const loadAvg = os.loadavg();
+        const cpuLoad = loadAvg[0];
+
+        res.json({
+            uptime: process.uptime(),
+            memory: {
+                total: totalMem,
+                free: freeMem,
+                used: usedMem,
+                usagePercentage: memUsage
+            },
+            cpu: {
+                load: cpuLoad
+            },
+            latency: {
+                db: dbLatency,
+                redis: redisLatency
+            },
+            status: 'ok'
+        });
+    } catch (error) {
+        console.error('Health Check Error:', error);
+        res.status(500).json({ status: 'error', message: String(error) });
+    }
+};
+
+// --- MAINTENANCE SYSTEM ---
+
+export const getMaintenanceStatus = async (req: Request, res: Response): Promise<void> => {
+    try {
+        // Cek key di Redis directly
+        const status = await redis.get('system:status'); // 'maintenance' or 'active'
+        res.json({ status: status || 'active' });
+    } catch (error) {
+        console.error('Error fetching system status:', error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+export const toggleMaintenance = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { enabled } = req.body; // true/false
+        const role = (req as any).user?.role;
+
+        if (role !== 'admin') {
+            res.status(403).json({ message: 'Forbidden' });
+            return;
+        }
+
+        const newStatus = enabled ? 'maintenance' : 'active';
+        await redis.set('system:status', newStatus);
+
+        console.log(`[SYSTEM] Maintenance Mode changed to: ${newStatus} by ${req.user?.username}`);
+        res.json({ message: `Sistem sekarang dalam mode: ${newStatus}`, status: newStatus });
+
+    } catch (error) {
+        console.error('Error toggling maintenance:', error);
         res.status(500).json({ message: 'Server Error' });
     }
 };

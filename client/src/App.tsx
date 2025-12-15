@@ -25,6 +25,12 @@ import AdminSchoolDetailPage from './pages/AdminSchoolDetailPage';
 import TeacherGradesPage from './pages/TeacherGradesPage';
 import TeacherStudentsPage from './pages/TeacherStudentsPage';
 import TeacherSettingsPage from './pages/TeacherSettingsPage';
+import AdminSettingsPage from './pages/AdminSettingsPage';
+import FeaturesPage from './pages/FeaturesPage';
+import MaintenancePage from './pages/MaintenancePage';
+import InvoicePage from './pages/InvoicePage';
+import ReceiptPage from './pages/ReceiptPage';
+import AdminFinancePage from './pages/AdminFinancePage';
 
 // Komponen Dummy untuk Placeholder Menu Lain
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -42,6 +48,8 @@ function App() {
                     <Routes>
                         {/* Halaman Landing Page (Public) */}
                         <Route path="/" element={<LandingPage />} />
+                        <Route path="/features" element={<FeaturesPage />} />
+                        <Route path="/maintenance" element={<MaintenancePage />} />
 
                         {/* Halaman Login */}
                         <Route path="/login" element={<LoginPage />} />
@@ -83,14 +91,15 @@ function App() {
 
                         {/* Rute Admin (Protected) */}
                         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                            <Route path="/admin/invoice-print" element={<InvoicePage />} />
+                            <Route path="/admin/receipt-print" element={<ReceiptPage />} />
+
                             <Route element={<AdminLayout />}>
                                 <Route path="/admin-dashboard" element={<AdminDashboard />} />
                                 <Route path="/admin/schools" element={<AdminSchoolsPage />} />
                                 <Route path="/admin/schools/:id" element={<AdminSchoolDetailPage />} />
-                                <Route path="/admin/master-data" element={<PlaceholderPage title="Data Master" />} />
-                                <Route path="/admin/users" element={<PlaceholderPage title="Manajemen User" />} />
-                                <Route path="/admin/monitoring" element={<PlaceholderPage title="Monitoring Global" />} />
-                                <Route path="/admin/settings" element={<PlaceholderPage title="Pengaturan Sistem" />} />
+                                <Route path="/admin/finance" element={<AdminFinancePage />} />
+                                <Route path="/admin/settings" element={<AdminSettingsPage />} />
                             </Route>
                         </Route>
 
