@@ -17,7 +17,18 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors()); // Agar frontend bisa akses backend
+app.use(cors({
+    origin: [
+        'http://localhost:3000',
+        'http://localhost:5173',
+        'https://sibentikexam.id',
+        'https://www.sibentikexam.id',
+        'https://sibentik-exam-projek.web.app'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+})); // Agar frontend bisa akses backend
 app.use(express.json()); // Agar bisa baca format JSON
 
 // Global Maintenance Check

@@ -9,7 +9,7 @@ const runMigration = async () => {
             ADD COLUMN IF NOT EXISTS total_requests BIGINT DEFAULT 0;
         `);
         console.log('✅ Migration successful: total_requests column added.');
-    } catch (error) {
+    } catch (error: any) {
         console.log('⚠️ Migration note:', error.message);
     } finally {
         // Jangan exit paksa agar pool bisa close gracefully jika perlu, atau exit manual

@@ -53,9 +53,9 @@ export const generateQuestions = async (req: Request, res: Response): Promise<vo
             ]
         `;
 
-        // Panggil model (gunakan gemini-1.5-flash yang stabil)
+        // Panggil model (gunakan gemini-2.0-flash-exp yang terbaru di 2024/2025)
         const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-2.0-flash-exp",
             contents: prompt,
             config: {
                 responseMimeType: "application/json", // Paksa output JSON
